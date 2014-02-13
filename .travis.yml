@@ -6,4 +6,4 @@ before_script:
   - go get launchpad.net/gocheck
   
 script:
-  - goveralls -coverprofile=bench.out rgaztLT7pidhfXGLbQz3bMowiBeB1XJlS
+  - goveralls -coverprofile=bench.out mS6XFaVRxtql39jFpQthGwGupXkq5ZJwZ
