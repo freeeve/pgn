@@ -9,4 +9,7 @@ before_install:
   - go get code.google.com/p/go.tools/cmd/cover
   
 script:
+  - go get github.com/axw/gocov/gocov
+  - go get github.com/mattn/goveralls
+  - export PATH=$PATH:$HOME/gopath/bin/
   - goveralls -coverprofile=bench.out mS6XFaVRxtql39jFpQthGwGupXkq5ZJwZ
