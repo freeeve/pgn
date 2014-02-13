@@ -19,5 +19,5 @@ func (s *FENSuite) TestParse(c *C) {
 	c.Assert(fen.BlackCastleStatus, Equals, Both)
 	c.Assert(fen.EnPassantVulnerable, Equals, NoPosition)
 	c.Assert(fen.HalfmoveClock, Equals, 0)
-	c.Assert(fen.Fullmove, Equals, 0)
+	c.Assert(fen.Fullmove, Equals, 1)
 }

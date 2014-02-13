@@ -1,0 +1,9 @@
+language: go
+go: 
+  - 1.2
+  
+before_script:
+  - go get launchpad.net/gocheck
+  
+script:
+  - goveralls -coverprofile=bench.out rgaztLT7pidhfXGLbQz3bMowiBeB1XJlS

@@ -70,7 +70,10 @@ func isEnd(str string) bool {
 
 func ParseMoves(s *scanner.Scanner, g *Game) error {
 	run := s.Peek()
-	board := NewBoardFEN(g.Tags["FEN"])
+	board, err := NewBoardFEN(g.Tags["FEN"])
+	if err != nil {
+		return err
+	}
 	num := ""
 	white := ""
 	black := ""
