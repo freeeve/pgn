@@ -4,6 +4,9 @@ go:
   
 before_script:
   - go get launchpad.net/gocheck
+
+before_install:
+  - go get code.google.com/p/go.tools/cmd/cover
   
 script:
   - goveralls -coverprofile=bench.out mS6XFaVRxtql39jFpQthGwGupXkq5ZJwZ
