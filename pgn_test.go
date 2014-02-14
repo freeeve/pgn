@@ -32,7 +32,7 @@ var simple = `[Event "State Ch."]
 `
 
 func (s *PGNSuite) TestParse(c *C) {
-	c.Skip("temporarly skipping until board is further along")
+	c.Skip("until board")
 	game, err := Parse(simple)
 	if err != nil {
 		c.Fatal(err)
@@ -40,10 +40,10 @@ func (s *PGNSuite) TestParse(c *C) {
 	if game.Tags["Site"] != "New York, USA" {
 		c.Fatal("Site tag wrong: ", game.Tags["Site"])
 	}
-	if len(game.Moves) == 0 || game.Moves[0].From != "d1" || game.Moves[0].To != "d4" {
+	if len(game.Moves) == 0 || game.Moves[0].From != D2 || game.Moves[0].To != D4 {
 		c.Fatal("first move is wrong", game.Moves[0])
 	}
-	if len(game.Moves) != 41 || game.Moves[0].From != "e5" || game.Moves[0].To != "f7" {
+	if len(game.Moves) != 41 || game.Moves[0].From != E5 || game.Moves[0].To != F7 {
 		c.Fatal("last move is wrong", game.Moves[0])
 	}
 }

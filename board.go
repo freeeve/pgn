@@ -1,6 +1,7 @@
 package pgn
 
 import (
+	"errors"
 	"fmt"
 	"strconv"
 )
@@ -97,8 +98,36 @@ func (cs CastleStatus) String(c Color) string {
 	return ret
 }
 
-func (b *Board) MoveFromAlgebraic(str string, color Color) *Move {
-	return &Move{"d1", "d4"}
+func (b *Board) MoveFromAlgebraic(str string, color Color) (*Move, error) {
+	pos, err := ParsePosition(str)
+	// if it's a raw position, it's a pawn move
+	if err == nil {
+		r := pos.GetRank()
+		f := pos.GetFile()
+		for {
+			if color == White {
+				r--
+				if b.GetPiece(PositionFromFileRank(f, r)) == WhitePawn {
+					return &Move{PositionFromFileRank(f, r), pos}, nil
+				}
+				if r == Rank('0') {
+					return nil, fmt.Errorf("Rank out of bounds: %c", r)
+				}
+			} else {
+				r++
+				if b.GetPiece(PositionFromFileRank(f, r)) == BlackPawn {
+					return &Move{PositionFromFileRank(f, r), pos}, nil
+				}
+				if r == Rank('9') {
+					return nil, fmt.Errorf("Rank out of bounds: %c", r)
+				}
+			}
+		}
+	} else {
+		// otherwise it's a non-pawn move
+		return nil, errors.New("unsupported move")
+	}
+	return &Move{D2, D4}, nil
 }
 
 func NewBoard() *Board {

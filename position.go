@@ -2,6 +2,34 @@ package pgn
 
 import "fmt"
 
+type Rank byte
+
+const (
+	NoRank Rank = '0'
+	Rank1  Rank = '1'
+	Rank2  Rank = '2'
+	Rank3  Rank = '3'
+	Rank4  Rank = '4'
+	Rank5  Rank = '5'
+	Rank6  Rank = '6'
+	Rank7  Rank = '7'
+	Rank8  Rank = '8'
+)
+
+type File byte
+
+const (
+	NoFile File = ' '
+	FileA  File = 'a'
+	FileB  File = 'b'
+	FileC  File = 'c'
+	FileD  File = 'd'
+	FileE  File = 'e'
+	FileF  File = 'f'
+	FileG  File = 'g'
+	FileH  File = 'h'
+)
+
 type Position uint64
 
 const NoPosition Position = 0
@@ -364,4 +392,53 @@ func (p Position) String() string {
 	default:
 		return "-"
 	}
+}
+
+func (p Position) GetRank() Rank {
+	if uint64(p) <= uint64(NoPosition) {
+		return NoRank
+	} else if uint64(p) <= uint64(H1) {
+		return Rank1
+	} else if uint64(p) <= uint64(H2) {
+		return Rank2
+	} else if uint64(p) <= uint64(H3) {
+		return Rank3
+	} else if uint64(p) <= uint64(H4) {
+		return Rank4
+	} else if uint64(p) <= uint64(H5) {
+		return Rank5
+	} else if uint64(p) <= uint64(H6) {
+		return Rank6
+	} else if uint64(p) <= uint64(H7) {
+		return Rank7
+	} else {
+		return Rank8
+	}
+}
+
+func (p Position) GetFile() File {
+	switch uint64(p) % 255 {
+	case 1 << 7:
+		return FileH
+	case 1 << 6:
+		return FileG
+	case 1 << 5:
+		return FileF
+	case 1 << 4:
+		return FileE
+	case 1 << 3:
+		return FileD
+	case 1 << 2:
+		return FileC
+	case 1 << 1:
+		return FileB
+	case 1 << 0:
+		return FileA
+	}
+	return NoFile
+}
+
+func PositionFromFileRank(f File, r Rank) (p Position) {
+	pos, _ := ParsePosition(fmt.Sprintf("%c%c", f, r))
+	return pos
 }

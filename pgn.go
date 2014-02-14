@@ -11,8 +11,8 @@ type Game struct {
 }
 
 type Move struct {
-	From string
-	To   string
+	From Position
+	To   Position
 }
 
 func Parse(str string) (*Game, error) {
@@ -70,9 +70,13 @@ func isEnd(str string) bool {
 
 func ParseMoves(s *scanner.Scanner, g *Game) error {
 	run := s.Peek()
-	board, err := NewBoardFEN(g.Tags["FEN"])
-	if err != nil {
-		return err
+	board := &Board{}
+	var err error
+	if len(g.Tags["FEN"]) > 0 {
+		board, err = NewBoardFEN(g.Tags["FEN"])
+		if err != nil {
+			return err
+		}
 	}
 	num := ""
 	white := ""
@@ -99,13 +103,21 @@ func ParseMoves(s *scanner.Scanner, g *Game) error {
 				if isEnd(white) {
 					return nil
 				}
-				g.Moves = append(g.Moves, *board.MoveFromAlgebraic(white, White))
+				move, err := board.MoveFromAlgebraic(white, White)
+				if err != nil {
+					return err
+				}
+				g.Moves = append(g.Moves, *move)
 			} else if black == "" {
 				black = s.TokenText()
 				if isEnd(black) {
 					return nil
 				}
-				g.Moves = append(g.Moves, *board.MoveFromAlgebraic(black, Black))
+				move, err := board.MoveFromAlgebraic(black, Black)
+				if err != nil {
+					return err
+				}
+				g.Moves = append(g.Moves, *move)
 				num = ""
 				white = ""
 				black = ""
