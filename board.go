@@ -6,6 +6,14 @@ import (
 	"strconv"
 )
 
+var (
+	ErrAmbiguousMove       error = errors.New("pgn: ambiguous algebraic move")
+	ErrUnknownMove         error = errors.New("pgn: unknown move")
+	ErrAttackerNotFound    error = errors.New("pgn: attacker not found")
+	ErrMoveFromEmptySquare error = errors.New("pgn: move from empty square")
+	ErrMoveWrongColor      error = errors.New("pgn: move from wrong color")
+)
+
 type Board struct {
 	wPawns        uint64
 	bPawns        uint64
@@ -45,18 +53,32 @@ const (
 	WhiteKing   Piece = 'K'
 )
 
+func (p Piece) Color() Color {
+	if byte(p) >= byte('a') && byte(p) <= byte('z') {
+		return Black
+	}
+	if byte(p) >= byte('A') && byte(p) <= byte('Z') {
+		return White
+	}
+	return NoColor
+}
+
 type Color int8
 
 const (
-	Black Color = iota
+	NoColor Color = iota
+	Black
 	White
 )
 
 func (c Color) String() string {
 	if c == White {
 		return "w"
+	} else if c == Black {
+
+		return "b"
 	}
-	return "b"
+	return " "
 }
 
 type CastleStatus int8
@@ -98,36 +120,66 @@ func (cs CastleStatus) String(c Color) string {
 	return ret
 }
 
-func (b *Board) MoveFromAlgebraic(str string, color Color) (*Move, error) {
+func (b *Board) MoveFromAlgebraic(str string, color Color) (Move, error) {
+	if b.toMove != color {
+		return NilMove, ErrMoveWrongColor
+	}
 	pos, err := ParsePosition(str)
+	testPos := pos
 	// if it's a raw position, it's a pawn move
 	if err == nil {
-		r := pos.GetRank()
-		f := pos.GetFile()
 		for {
 			if color == White {
-				r--
-				if b.GetPiece(PositionFromFileRank(f, r)) == WhitePawn {
-					return &Move{PositionFromFileRank(f, r), pos}, nil
+				testPos >>= 8
+				if b.GetPiece(testPos) == WhitePawn {
+					return Move{testPos, pos}, nil
 				}
-				if r == Rank('0') {
-					return nil, fmt.Errorf("Rank out of bounds: %c", r)
+				if pos == NoPosition {
+					return NilMove, fmt.Errorf("Position out of bounds")
 				}
 			} else {
-				r++
-				if b.GetPiece(PositionFromFileRank(f, r)) == BlackPawn {
-					return &Move{PositionFromFileRank(f, r), pos}, nil
+				testPos <<= 8
+				if b.GetPiece(testPos) == BlackPawn {
+					return Move{testPos, pos}, nil
 				}
-				if r == Rank('9') {
-					return nil, fmt.Errorf("Rank out of bounds: %c", r)
+				if pos == NoPosition {
+					return NilMove, fmt.Errorf("Position out of bounds")
 				}
 			}
 		}
 	} else {
 		// otherwise it's a non-pawn move
-		return nil, errors.New("unsupported move")
+		switch str[0] {
+		case 'O':
+			if str == "O-O" {
+				if color == White {
+					return Move{E1, G1}, nil
+				} else {
+					return Move{E8, G8}, nil
+				}
+			} else if str == "O-O-O" {
+				if color == White {
+					return Move{E1, B1}, nil
+				} else {
+					return Move{E8, B8}, nil
+				}
+			} else {
+				return NilMove, ErrUnknownMove
+			}
+		case 'N':
+			pos, err := ParsePosition(str[len(str)-2 : len(str)])
+			if err != nil {
+				return NilMove, err
+			}
+			fromPos, err := b.findAttackingKnight(pos, color)
+			if err != nil {
+				return NilMove, err
+			}
+			return Move{fromPos, pos}, nil
+		}
+		return NilMove, ErrUnknownMove
 	}
-	return &Move{D2, D4}, nil
+	return Move{D2, D4}, nil
 }
 
 func NewBoard() *Board {
@@ -180,6 +232,58 @@ func (b *Board) String() string {
 	return FENFromBoard(b).String()
 }
 
+func (b *Board) MakeMove(m Move) error {
+	p := b.GetPiece(m.From)
+	if p == Empty {
+		return ErrMoveFromEmptySquare
+	}
+	if p.Color() != b.toMove {
+		return ErrMoveWrongColor
+	}
+	take := b.GetPiece(m.To)
+	if take != Empty {
+		b.RemovePiece(m.To, take)
+	}
+	b.SetPiece(m.To, p)
+	b.RemovePiece(m.From, p)
+	switch b.toMove {
+	case White:
+		b.toMove = Black
+	case Black:
+		b.toMove = White
+	}
+	return nil
+}
+
+func (b *Board) RemovePiece(pos Position, p Piece) {
+	switch p {
+	case WhitePawn:
+		b.wPawns &= ^uint64(pos)
+	case BlackPawn:
+		b.bPawns &= ^uint64(pos)
+	case WhiteKnight:
+		b.wKnights &= ^uint64(pos)
+	case BlackKnight:
+		b.bKnights &= ^uint64(pos)
+	case WhiteBishop:
+		b.wBishops &= ^uint64(pos)
+	case BlackBishop:
+		b.bBishops &= ^uint64(pos)
+	case WhiteRook:
+		b.wRooks &= ^uint64(pos)
+	case BlackRook:
+		b.bRooks &= ^uint64(pos)
+	case WhiteQueen:
+		b.wQueens &= ^uint64(pos)
+	case BlackQueen:
+		b.bQueens &= ^uint64(pos)
+	case WhiteKing:
+		b.wKings &= ^uint64(pos)
+	case BlackKing:
+		b.bKings &= ^uint64(pos)
+	}
+}
+
 func (b *Board) SetPiece(pos Position, p Piece) {
 	switch p {
 	case WhitePawn:
@@ -207,7 +311,6 @@ func (b *Board) SetPiece(pos Position, p Piece) {
 	case BlackKing:
 		b.bKings |= uint64(pos)
 	}
-
 }
 
 func (b Board) GetPiece(p Position) Piece {
@@ -248,4 +351,72 @@ func (b Board) GetPiece(p Position) Piece {
 		return WhiteKing
 	}
 	return Empty
+}
+
+func (b Board) findAttackingKnight(pos Position, color Color) (Position, error) {
+	count := 0
+	r := pos.GetRank()
+	f := pos.GetFile()
+	retPos := NoPosition
+
+	testPos := PositionFromFileRank(f+1, r+2)
+	if testPos != NoPosition && b.checkKnightColor(testPos, color) {
+		count++
+		retPos = testPos
+	}
+
+	testPos = PositionFromFileRank(f+1, r-2)
+	if testPos != NoPosition && b.checkKnightColor(testPos, color) {
+		count++
+		retPos = testPos
+	}
+
+	testPos = PositionFromFileRank(f+2, r+1)
+	if testPos != NoPosition && b.checkKnightColor(testPos, color) {
+		count++
+		retPos = testPos
+	}
+
+	testPos = PositionFromFileRank(f+2, r-1)
+	if testPos != NoPosition && b.checkKnightColor(testPos, color) {
+		count++
+		retPos = testPos
+	}
+
+	testPos = PositionFromFileRank(f-2, r-1)
+	if testPos != NoPosition && b.checkKnightColor(testPos, color) {
+		count++
+		retPos = testPos
+	}
+
+	testPos = PositionFromFileRank(f-2, r+1)
+	if testPos != NoPosition && b.checkKnightColor(testPos, color) {
+		count++
+		retPos = testPos
+	}
+
+	testPos = PositionFromFileRank(f-1, r-2)
+	if testPos != NoPosition && b.checkKnightColor(testPos, color) {
+		count++
+		retPos = testPos
+	}
+
+	testPos = PositionFromFileRank(f-1, r+2)
+	if testPos != NoPosition && b.checkKnightColor(testPos, color) {
+		count++
+		retPos = testPos
+	}
+
+	if count > 1 {
+		return NoPosition, ErrAmbiguousMove
+	}
+	if count == 0 {
+		return NoPosition, ErrAttackerNotFound
+	}
+	return retPos, nil
+}
+
+func (b Board) checkKnightColor(pos Position, color Color) bool {
+	return (b.GetPiece(pos) == WhiteKnight && color == White) ||
+		(b.GetPiece(pos) == BlackKnight && color == Black)
 }

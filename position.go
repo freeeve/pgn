@@ -311,6 +311,10 @@ func (p Position) GetFile() File {
 }
 
 func PositionFromFileRank(f File, r Rank) (p Position) {
-	pos, _ := ParsePosition(fmt.Sprintf("%c%c", f, r))
+	pos, err := ParsePosition(fmt.Sprintf("%c%c", f, r))
+	if err != nil {
+		fmt.Println(err)
+		return NoPosition
+	}
 	return pos
 }

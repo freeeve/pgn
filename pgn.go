@@ -15,6 +15,10 @@ type Move struct {
 	To   Position
 }
 
+var (
+	NilMove Move = Move{From: NoPosition, To: NoPosition}
+)
+
 func Parse(str string) (*Game, error) {
 	g := Game{Tags: map[string]string{}, Moves: []Move{}}
 	r := strings.NewReader(str)
@@ -107,7 +111,7 @@ func ParseMoves(s *scanner.Scanner, g *Game) error {
 				if err != nil {
 					return err
 				}
-				g.Moves = append(g.Moves, *move)
+				g.Moves = append(g.Moves, move)
 			} else if black == "" {
 				black = s.TokenText()
 				if isEnd(black) {
@@ -117,7 +121,7 @@ func ParseMoves(s *scanner.Scanner, g *Game) error {
 				if err != nil {
 					return err
 				}
-				g.Moves = append(g.Moves, *move)
+				g.Moves = append(g.Moves, move)
 				num = ""
 				white = ""
 				black = ""
