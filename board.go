@@ -176,6 +176,16 @@ func (b *Board) MoveFromAlgebraic(str string, color Color) (Move, error) {
 				return NilMove, err
 			}
 			return Move{fromPos, pos}, nil
+		case 'B':
+			pos, err := ParsePosition(str[len(str)-2 : len(str)])
+			if err != nil {
+				return NilMove, err
+			}
+			fromPos, err := b.findAttackingBishop(pos, color)
+			if err != nil {
+				return NilMove, err
+			}
+			return Move{fromPos, pos}, nil
 		}
 		return NilMove, ErrUnknownMove
 	}
@@ -419,4 +429,84 @@ func (b Board) findAttackingKnight(pos Position, color Color) (Position, error) 
 func (b Board) checkKnightColor(pos Position, color Color) bool {
 	return (b.GetPiece(pos) == WhiteKnight && color == White) ||
 		(b.GetPiece(pos) == BlackKnight && color == Black)
+}
+
+func (b Board) findAttackingBishop(pos Position, color Color) (Position, error) {
+	count := 0
+	retPos := NoPosition
+
+	r := pos.GetRank()
+	f := pos.GetFile()
+	for {
+		f--
+		r--
+		testPos := PositionFromFileRank(f, r)
+		if b.checkBishopColor(testPos, color) {
+			retPos = testPos
+			count++
+		} else if testPos == NoPosition || b.containsPieceAt(testPos) {
+			break
+		}
+	}
+
+	r = pos.GetRank()
+	f = pos.GetFile()
+	for {
+		f--
+		r++
+		testPos := PositionFromFileRank(f, r)
+		if b.checkBishopColor(testPos, color) {
+			retPos = testPos
+			count++
+		} else if testPos == NoPosition || b.containsPieceAt(testPos) {
+			break
+		}
+	}
+
+	r = pos.GetRank()
+	f = pos.GetFile()
+	for {
+		f++
+		r++
+		testPos := PositionFromFileRank(f, r)
+		if b.checkBishopColor(testPos, color) {
+			retPos = testPos
+			count++
+		} else if testPos == NoPosition || b.containsPieceAt(testPos) {
+			break
+		}
+	}
+
+	r = pos.GetRank()
+	f = pos.GetFile()
+	for {
+		f++
+		r--
+		testPos := PositionFromFileRank(f, r)
+		if b.checkBishopColor(testPos, color) {
+			retPos = testPos
+			count++
+		} else if testPos == NoPosition || b.containsPieceAt(testPos) {
+			break
+		}
+	}
+
+	if count > 1 {
+		return NoPosition, ErrAmbiguousMove
+	}
+	if count == 0 {
+		return NoPosition, ErrAttackerNotFound
+	}
+	return retPos, nil
+}
+
+func (b Board) checkBishopColor(pos Position, color Color) bool {
+	return (b.GetPiece(pos) == WhiteBishop && color == White) ||
+		(b.GetPiece(pos) == BlackBishop && color == Black)
+}
+
+func (b Board) containsPieceAt(pos Position) bool {
+	return (uint64(b.wPawns)|uint64(b.bPawns)|uint64(b.wKnights)|uint64(b.bKnights)|
+		uint64(b.wBishops)|uint64(b.bBishops)|uint64(b.wRooks)|uint64(b.bRooks)|
+		uint64(b.wQueens)|uint64(b.bQueens)|uint64(b.wKings)|uint64(b.bKings))&uint64(pos) > 0
 }

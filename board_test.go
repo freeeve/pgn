@@ -144,7 +144,6 @@ func (s *BoardSuite) TestBoardMoveFromAlgebraicBlackKnight(c *C) {
 }
 
 func (s *BoardSuite) TestBoardMoveFromAlgebraicBlackBishop(c *C) {
-	c.Skip("bishop next")
 	b := NewBoard()
 	move, err := b.MoveFromAlgebraic("e4", White)
 	c.Assert(err, IsNil)
@@ -155,8 +154,48 @@ func (s *BoardSuite) TestBoardMoveFromAlgebraicBlackBishop(c *C) {
 	move, err = b.MoveFromAlgebraic("d4", White)
 	c.Assert(err, IsNil)
 	b.MakeMove(move)
-	move, err = b.MoveFromAlgebraic("Bg5", Black)
+	move, err = b.MoveFromAlgebraic("Bg4", Black)
 	c.Assert(err, IsNil)
 	c.Assert(move.From, Equals, C8)
-	c.Assert(move.To, Equals, G5)
+	c.Assert(move.To, Equals, G4)
+}
+
+func (s *BoardSuite) TestBoardContainsPieceAtA1(c *C) {
+	b := NewBoard()
+	c.Assert(b.containsPieceAt(A1), Equals, true)
+}
+
+func (s *BoardSuite) TestBoardContainsPieceAtA2(c *C) {
+	b := NewBoard()
+	c.Assert(b.containsPieceAt(A2), Equals, true)
+}
+
+func (s *BoardSuite) TestBoardContainsPieceAtA3(c *C) {
+	b := NewBoard()
+	c.Assert(b.containsPieceAt(A3), Equals, false)
+}
+
+func (s *BoardSuite) TestBoardContainsPieceAtA4(c *C) {
+	b := NewBoard()
+	c.Assert(b.containsPieceAt(A4), Equals, false)
+}
+
+func (s *BoardSuite) TestBoardContainsPieceAtA5(c *C) {
+	b := NewBoard()
+	c.Assert(b.containsPieceAt(A5), Equals, false)
+}
+
+func (s *BoardSuite) TestBoardContainsPieceAtA6(c *C) {
+	b := NewBoard()
+	c.Assert(b.containsPieceAt(A6), Equals, false)
+}
+
+func (s *BoardSuite) TestBoardContainsPieceAtA7(c *C) {
+	b := NewBoard()
+	c.Assert(b.containsPieceAt(A7), Equals, true)
+}
+
+func (s *BoardSuite) TestBoardContainsPieceAtA8(c *C) {
+	b := NewBoard()
+	c.Assert(b.containsPieceAt(A8), Equals, true)
 }
