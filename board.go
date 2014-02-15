@@ -12,6 +12,10 @@ var (
 	ErrAttackerNotFound    error = errors.New("pgn: attacker not found")
 	ErrMoveFromEmptySquare error = errors.New("pgn: move from empty square")
 	ErrMoveWrongColor      error = errors.New("pgn: move from wrong color")
+	ErrMoveThroughPiece    error = errors.New("pgn: move through piece")
+	ErrMoveThroughCheck    error = errors.New("pgn: move through check")
+	ErrMoveIntoCheck       error = errors.New("pgn: move into check")
+	ErrMoveInvalidCastle   error = errors.New("pgn: move invalid castle")
 )
 
 type Board struct {
@@ -152,17 +156,9 @@ func (b *Board) MoveFromAlgebraic(str string, color Color) (Move, error) {
 		switch str[0] {
 		case 'O':
 			if str == "O-O" {
-				if color == White {
-					return Move{E1, G1}, nil
-				} else {
-					return Move{E8, G8}, nil
-				}
+				return b.getKingsideCastle(color)
 			} else if str == "O-O-O" {
-				if color == White {
-					return Move{E1, B1}, nil
-				} else {
-					return Move{E8, B8}, nil
-				}
+				return b.getQueensideCastle(color)
 			} else {
 				return NilMove, ErrUnknownMove
 			}
@@ -509,4 +505,65 @@ func (b Board) containsPieceAt(pos Position) bool {
 	return (uint64(b.wPawns)|uint64(b.bPawns)|uint64(b.wKnights)|uint64(b.bKnights)|
 		uint64(b.wBishops)|uint64(b.bBishops)|uint64(b.wRooks)|uint64(b.bRooks)|
 		uint64(b.wQueens)|uint64(b.bQueens)|uint64(b.wKings)|uint64(b.bKings))&uint64(pos) > 0
+}
+
+func (b Board) getKingsideCastle(color Color) (Move, error) {
+	if color == White {
+		if b.wCastle != Both && b.wCastle != King {
+			return NilMove, ErrMoveInvalidCastle
+		}
+		if b.containsPieceAt(F1) || b.containsPieceAt(G1) {
+			return NilMove, ErrMoveThroughPiece
+		}
+		if b.positionAttackedBy(F1, Black) || b.positionAttackedBy(G1, Black) {
+			return NilMove, ErrMoveThroughCheck
+		}
+		return Move{E1, G1}, nil
+	} else {
+		if b.bCastle != Both && b.bCastle != King {
+			return NilMove, ErrMoveInvalidCastle
+		}
+		if b.containsPieceAt(F8) || b.containsPieceAt(G8) {
+			return NilMove, ErrMoveThroughPiece
+		}
+		if b.positionAttackedBy(F8, White) || b.positionAttackedBy(G8, White) {
+			return NilMove, ErrMoveThroughCheck
+		}
+		return Move{E8, G8}, nil
+	}
+}
+
+func (b Board) getQueensideCastle(color Color) (Move, error) {
+	if color == White {
+		if b.wCastle != Both && b.wCastle != Queen {
+			return NilMove, ErrMoveInvalidCastle
+		}
+		if b.containsPieceAt(B1) || b.containsPieceAt(C1) || b.containsPieceAt(D1) {
+			return NilMove, ErrMoveThroughPiece
+		}
+		if b.positionAttackedBy(B1, Black) || b.positionAttackedBy(C1, Black) || b.positionAttackedBy(D1, Black) {
+			return NilMove, ErrMoveThroughCheck
+		}
+		return Move{E1, B1}, nil
+	} else {
+		if b.bCastle != Both && b.bCastle != Queen {
+			return NilMove, ErrMoveInvalidCastle
+		}
+		if b.containsPieceAt(B8) || b.containsPieceAt(C8) || b.containsPieceAt(D8) {
+			return NilMove, ErrMoveThroughPiece
+		}
+		if b.positionAttackedBy(B8, White) || b.positionAttackedBy(C8, White) || b.positionAttackedBy(D8, White) {
+			return NilMove, ErrMoveThroughCheck
+		}
+		return Move{E8, B8}, nil
+	}
+}
+
+func (b Board) positionAttackedBy(pos Position, color Color) bool {
+	// TODO implement this
+	if color == White {
+		return false
+	} else {
+		return false
+	}
 }
