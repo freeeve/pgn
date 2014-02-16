@@ -182,6 +182,49 @@ func (b *Board) MoveFromAlgebraic(str string, color Color) (Move, error) {
 				return NilMove, err
 			}
 			return Move{fromPos, pos}, nil
+		case 'R':
+			pos, err := ParsePosition(str[len(str)-2 : len(str)])
+			if err != nil {
+				return NilMove, err
+			}
+			fromPos, err := b.findAttackingRook(pos, color)
+			if err != nil {
+				return NilMove, err
+			}
+			return Move{fromPos, pos}, nil
+		case 'Q':
+			pos, err := ParsePosition(str[len(str)-2 : len(str)])
+			if err != nil {
+				return NilMove, err
+			}
+			fromPos, err := b.findAttackingQueen(pos, color)
+			if err != nil {
+				return NilMove, err
+			}
+			return Move{fromPos, pos}, nil
+		case 'K':
+			pos, err := ParsePosition(str[len(str)-2 : len(str)])
+			if err != nil {
+				return NilMove, err
+			}
+			fromPos, err := b.findAttackingKing(pos, color)
+			if err != nil {
+				return NilMove, err
+			}
+			return Move{fromPos, pos}, nil
+		}
+		// pawn taking move
+		if str[0] >= 'a' && str[0] <= 'h' && str[1] == 'x' {
+			pos, err := ParsePosition(str[len(str)-2 : len(str)])
+			if err != nil {
+				return NilMove, err
+			}
+			fromPos, err := b.findAttackingPawn(pos, color)
+			// TODO handle ambiguous
+			if err != nil {
+				return NilMove, err
+			}
+			return Move{fromPos, pos}, nil
 		}
 		return NilMove, ErrUnknownMove
 	}
@@ -359,6 +402,53 @@ func (b Board) GetPiece(p Position) Piece {
 	return Empty
 }
 
+func (b Board) findAttackingPawn(pos Position, color Color) (Position, error) {
+	retPos := NoPosition
+	if color == White {
+		// special en-passant case
+		if b.lastMove.To.GetFile() == pos.GetFile() &&
+			b.lastMove.To.GetRank() == pos.GetRank()-1 &&
+			b.lastMove.From.GetRank() == pos.GetRank()+1 &&
+			b.GetPiece(PositionFromFileRank(pos.GetFile(), pos.GetRank()-1)) == BlackPawn {
+			if b.GetPiece(PositionFromFileRank(pos.GetFile()+1, pos.GetRank()-1)) == WhitePawn {
+				retPos = PositionFromFileRank(pos.GetFile()+1, pos.GetRank()-1)
+			}
+			if b.GetPiece(PositionFromFileRank(pos.GetFile()-1, pos.GetRank()-1)) == WhitePawn {
+				retPos = PositionFromFileRank(pos.GetFile()-1, pos.GetRank()-1)
+			}
+			if b.GetPiece(PositionFromFileRank(pos.GetFile()+1, pos.GetRank()-1)) == WhitePawn {
+				retPos = PositionFromFileRank(pos.GetFile()+1, pos.GetRank()-1)
+			}
+			if b.GetPiece(PositionFromFileRank(pos.GetFile()-1, pos.GetRank()-1)) == WhitePawn {
+				retPos = PositionFromFileRank(pos.GetFile()-1, pos.GetRank()-1)
+			}
+		}
+	} else {
+		// special en-passant case
+		if b.lastMove.To.GetFile() == pos.GetFile() &&
+			b.lastMove.To.GetRank() == pos.GetRank()+1 &&
+			b.lastMove.From.GetRank() == pos.GetRank()-1 &&
+			b.GetPiece(PositionFromFileRank(pos.GetFile(), pos.GetRank()+1)) == WhitePawn {
+			if b.GetPiece(PositionFromFileRank(pos.GetFile()+1, pos.GetRank()+1)) == BlackPawn {
+				retPos = PositionFromFileRank(pos.GetFile()+1, pos.GetRank()+1)
+			}
+			if b.GetPiece(PositionFromFileRank(pos.GetFile()-1, pos.GetRank()+1)) == BlackPawn {
+				retPos = PositionFromFileRank(pos.GetFile()-1, pos.GetRank()+1)
+			}
+		}
+		if b.GetPiece(PositionFromFileRank(pos.GetFile()+1, pos.GetRank()+1)) == BlackPawn {
+			retPos = PositionFromFileRank(pos.GetFile()+1, pos.GetRank()+1)
+		}
+		if b.GetPiece(PositionFromFileRank(pos.GetFile()-1, pos.GetRank()+1)) == BlackPawn {
+			retPos = PositionFromFileRank(pos.GetFile()-1, pos.GetRank()+1)
+		}
+	}
+	if retPos == NoPosition {
+		return retPos, ErrAttackerNotFound
+	}
+	return retPos, nil
+}
+
 func (b Board) findAttackingKnight(pos Position, color Color) (Position, error) {
 	count := 0
 	r := pos.GetRank()
@@ -501,6 +591,297 @@ func (b Board) checkBishopColor(pos Position, color Color) bool {
 		(b.GetPiece(pos) == BlackBishop && color == Black)
 }
 
+func (b Board) findAttackingRook(pos Position, color Color) (Position, error) {
+	count := 0
+	retPos := NoPosition
+
+	r := pos.GetRank()
+	f := pos.GetFile()
+	for {
+		f--
+		testPos := PositionFromFileRank(f, r)
+		if b.checkRookColor(testPos, color) {
+			retPos = testPos
+			count++
+		} else if testPos == NoPosition || b.containsPieceAt(testPos) {
+			break
+		}
+	}
+
+	r = pos.GetRank()
+	f = pos.GetFile()
+	for {
+		f++
+		testPos := PositionFromFileRank(f, r)
+		if b.checkRookColor(testPos, color) {
+			retPos = testPos
+			count++
+		} else if testPos == NoPosition || b.containsPieceAt(testPos) {
+			break
+		}
+	}
+
+	r = pos.GetRank()
+	f = pos.GetFile()
+	for {
+		r++
+		testPos := PositionFromFileRank(f, r)
+		if b.checkRookColor(testPos, color) {
+			retPos = testPos
+			count++
+		} else if testPos == NoPosition || b.containsPieceAt(testPos) {
+			break
+		}
+	}
+
+	r = pos.GetRank()
+	f = pos.GetFile()
+	for {
+		r--
+		testPos := PositionFromFileRank(f, r)
+		if b.checkRookColor(testPos, color) {
+			retPos = testPos
+			count++
+		} else if testPos == NoPosition || b.containsPieceAt(testPos) {
+			break
+		}
+	}
+
+	if count > 1 {
+		return NoPosition, ErrAmbiguousMove
+	}
+	if count == 0 {
+		return NoPosition, ErrAttackerNotFound
+	}
+	return retPos, nil
+}
+
+func (b Board) checkRookColor(pos Position, color Color) bool {
+	return (b.GetPiece(pos) == WhiteRook && color == White) ||
+		(b.GetPiece(pos) == BlackRook && color == Black)
+}
+
+func (b Board) findAttackingQueen(pos Position, color Color) (Position, error) {
+	count := 0
+	retPos := NoPosition
+
+	// straight
+	r := pos.GetRank()
+	f := pos.GetFile()
+	for {
+		f--
+		testPos := PositionFromFileRank(f, r)
+		if b.checkQueenColor(testPos, color) {
+			retPos = testPos
+			count++
+		} else if testPos == NoPosition || b.containsPieceAt(testPos) {
+			break
+		}
+	}
+
+	r = pos.GetRank()
+	f = pos.GetFile()
+	for {
+		f++
+		testPos := PositionFromFileRank(f, r)
+		if b.checkQueenColor(testPos, color) {
+			retPos = testPos
+			count++
+		} else if testPos == NoPosition || b.containsPieceAt(testPos) {
+			break
+		}
+	}
+
+	r = pos.GetRank()
+	f = pos.GetFile()
+	for {
+		r++
+		testPos := PositionFromFileRank(f, r)
+		if b.checkQueenColor(testPos, color) {
+			retPos = testPos
+			count++
+		} else if testPos == NoPosition || b.containsPieceAt(testPos) {
+			break
+		}
+	}
+
+	r = pos.GetRank()
+	f = pos.GetFile()
+	for {
+		r--
+		testPos := PositionFromFileRank(f, r)
+		if b.checkQueenColor(testPos, color) {
+			retPos = testPos
+			count++
+		} else if testPos == NoPosition || b.containsPieceAt(testPos) {
+			break
+		}
+	}
+
+	// diagonals
+	r = pos.GetRank()
+	f = pos.GetFile()
+	for {
+		f--
+		r--
+		testPos := PositionFromFileRank(f, r)
+		if b.checkQueenColor(testPos, color) {
+			retPos = testPos
+			count++
+		} else if testPos == NoPosition || b.containsPieceAt(testPos) {
+			break
+		}
+	}
+
+	r = pos.GetRank()
+	f = pos.GetFile()
+	for {
+		f--
+		r++
+		testPos := PositionFromFileRank(f, r)
+		if b.checkQueenColor(testPos, color) {
+			retPos = testPos
+			count++
+		} else if testPos == NoPosition || b.containsPieceAt(testPos) {
+			break
+		}
+	}
+
+	r = pos.GetRank()
+	f = pos.GetFile()
+	for {
+		f++
+		r++
+		testPos := PositionFromFileRank(f, r)
+		if b.checkQueenColor(testPos, color) {
+			retPos = testPos
+			count++
+		} else if testPos == NoPosition || b.containsPieceAt(testPos) {
+			break
+		}
+	}
+
+	r = pos.GetRank()
+	f = pos.GetFile()
+	for {
+		f++
+		r--
+		testPos := PositionFromFileRank(f, r)
+		if b.checkQueenColor(testPos, color) {
+			retPos = testPos
+			count++
+		} else if testPos == NoPosition || b.containsPieceAt(testPos) {
+			break
+		}
+	}
+
+	if count > 1 {
+		return NoPosition, ErrAmbiguousMove
+	}
+	if count == 0 {
+		return NoPosition, ErrAttackerNotFound
+	}
+	return retPos, nil
+}
+
+func (b Board) checkQueenColor(pos Position, color Color) bool {
+	return (b.GetPiece(pos) == WhiteQueen && color == White) ||
+		(b.GetPiece(pos) == BlackQueen && color == Black)
+}
+
+func (b Board) findAttackingKing(pos Position, color Color) (Position, error) {
+	count := 0
+	retPos := NoPosition
+
+	// straight
+	r := pos.GetRank()
+	f := pos.GetFile()
+	f--
+	testPos := PositionFromFileRank(f, r)
+	if b.checkQueenColor(testPos, color) {
+		retPos = testPos
+		count++
+	}
+
+	r = pos.GetRank()
+	f = pos.GetFile()
+	f++
+	testPos = PositionFromFileRank(f, r)
+	if b.checkQueenColor(testPos, color) {
+		retPos = testPos
+		count++
+	}
+
+	r = pos.GetRank()
+	f = pos.GetFile()
+	r++
+	testPos = PositionFromFileRank(f, r)
+	if b.checkQueenColor(testPos, color) {
+		retPos = testPos
+		count++
+	}
+
+	r = pos.GetRank()
+	f = pos.GetFile()
+	r--
+	testPos = PositionFromFileRank(f, r)
+	if b.checkQueenColor(testPos, color) {
+		retPos = testPos
+		count++
+	}
+
+	// diagonals
+	r = pos.GetRank()
+	f = pos.GetFile()
+	f--
+	r--
+	testPos = PositionFromFileRank(f, r)
+	if b.checkQueenColor(testPos, color) {
+		retPos = testPos
+		count++
+	}
+
+	r = pos.GetRank()
+	f = pos.GetFile()
+	f--
+	r++
+	testPos = PositionFromFileRank(f, r)
+	if b.checkQueenColor(testPos, color) {
+		retPos = testPos
+		count++
+	}
+
+	r = pos.GetRank()
+	f = pos.GetFile()
+	f++
+	r++
+	testPos = PositionFromFileRank(f, r)
+	if b.checkQueenColor(testPos, color) {
+		retPos = testPos
+		count++
+	}
+
+	r = pos.GetRank()
+	f = pos.GetFile()
+	f++
+	r--
+	testPos = PositionFromFileRank(f, r)
+	if b.checkQueenColor(testPos, color) {
+		retPos = testPos
+		count++
+	}
+
+	if count == 0 {
+		return NoPosition, ErrAttackerNotFound
+	}
+	return retPos, nil
+}
+
+func (b Board) checkKingColor(pos Position, color Color) bool {
+	return (b.GetPiece(pos) == WhiteQueen && color == White) ||
+		(b.GetPiece(pos) == BlackQueen && color == Black)
+}
+
 func (b Board) containsPieceAt(pos Position) bool {
 	return (uint64(b.wPawns)|uint64(b.bPawns)|uint64(b.wKnights)|uint64(b.bKnights)|
 		uint64(b.wBishops)|uint64(b.bBishops)|uint64(b.wRooks)|uint64(b.bRooks)|
@@ -560,10 +941,29 @@ func (b Board) getQueensideCastle(color Color) (Move, error) {
 }
 
 func (b Board) positionAttackedBy(pos Position, color Color) bool {
-	// TODO implement this
-	if color == White {
-		return false
-	} else {
-		return false
+	p, _ := b.findAttackingPawn(pos, color)
+	if p != NoPosition {
+		return true
 	}
+	p, _ = b.findAttackingKnight(pos, color)
+	if p != NoPosition {
+		return true
+	}
+	p, _ = b.findAttackingBishop(pos, color)
+	if p != NoPosition {
+		return true
+	}
+	p, _ = b.findAttackingRook(pos, color)
+	if p != NoPosition {
+		return true
+	}
+	p, _ = b.findAttackingQueen(pos, color)
+	if p != NoPosition {
+		return true
+	}
+	p, _ = b.findAttackingKing(pos, color)
+	if p != NoPosition {
+		return true
+	}
+	return false
 }
