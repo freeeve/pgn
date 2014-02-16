@@ -1,6 +1,7 @@
 package pgn
 
 import (
+	"fmt"
 	"strings"
 	"text/scanner"
 )
@@ -13,6 +14,10 @@ type Game struct {
 type Move struct {
 	From Position
 	To   Position
+}
+
+func (m Move) String() string {
+	return fmt.Sprintf("%v%v", m.From, m.To)
 }
 
 var (
@@ -74,7 +79,7 @@ func isEnd(str string) bool {
 
 func ParseMoves(s *scanner.Scanner, g *Game) error {
 	run := s.Peek()
-	board := &Board{}
+	board := NewBoard()
 	var err error
 	if len(g.Tags["FEN"]) > 0 {
 		board, err = NewBoardFEN(g.Tags["FEN"])
@@ -95,6 +100,8 @@ func ParseMoves(s *scanner.Scanner, g *Game) error {
 			for run != '}' && run != scanner.EOF {
 				run = s.Next()
 			}
+		case '+', '-', '!', '?':
+			run = s.Next()
 		default:
 			s.Scan()
 			if num == "" {
@@ -104,6 +111,12 @@ func ParseMoves(s *scanner.Scanner, g *Game) error {
 				}
 			} else if white == "" {
 				white = s.TokenText()
+				for s.Peek() == '-' {
+					s.Scan()
+					white += s.TokenText()
+					s.Scan()
+					white += s.TokenText()
+				}
 				if isEnd(white) {
 					return nil
 				}
@@ -112,8 +125,16 @@ func ParseMoves(s *scanner.Scanner, g *Game) error {
 					return err
 				}
 				g.Moves = append(g.Moves, move)
+				board.MakeMove(move)
+				//fmt.Println("making move for white:", move)
 			} else if black == "" {
 				black = s.TokenText()
+				for s.Peek() == '-' {
+					s.Scan()
+					black += s.TokenText()
+					s.Scan()
+					black += s.TokenText()
+				}
 				if isEnd(black) {
 					return nil
 				}
@@ -122,6 +143,8 @@ func ParseMoves(s *scanner.Scanner, g *Game) error {
 					return err
 				}
 				g.Moves = append(g.Moves, move)
+				board.MakeMove(move)
+				//fmt.Println("making move for black:", move)
 				num = ""
 				white = ""
 				black = ""

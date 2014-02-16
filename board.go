@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"strconv"
+	"strings"
 )
 
 var (
@@ -125,6 +126,8 @@ func (cs CastleStatus) String(c Color) string {
 }
 
 func (b *Board) MoveFromAlgebraic(str string, color Color) (Move, error) {
+	str = strings.Trim(str, "+!?")
+	//fmt.Println("move from alg:", str, "..", color)
 	if b.toMove != color {
 		return NilMove, ErrMoveWrongColor
 	}
@@ -168,6 +171,14 @@ func (b *Board) MoveFromAlgebraic(str string, color Color) (Move, error) {
 				return NilMove, err
 			}
 			fromPos, err := b.findAttackingKnight(pos, color)
+			if err == ErrAmbiguousMove {
+				if str[1] >= 'a' && str[1] <= 'h' {
+					fromPos, err = b.findAttackingKnightFromFile(pos, color, File(str[1]))
+					if err != nil {
+						return Move{fromPos, pos}, nil
+					}
+				}
+			}
 			if err != nil {
 				return NilMove, err
 			}
@@ -282,6 +293,7 @@ func (b *Board) String() string {
 }
 
 func (b *Board) MakeMove(m Move) error {
+	// TODO test/handle special enpassant and castle
 	p := b.GetPiece(m.From)
 	if p == Empty {
 		return ErrMoveFromEmptySquare
@@ -447,74 +459,6 @@ func (b Board) findAttackingPawn(pos Position, color Color) (Position, error) {
 		return retPos, ErrAttackerNotFound
 	}
 	return retPos, nil
-}
-
-func (b Board) findAttackingKnight(pos Position, color Color) (Position, error) {
-	count := 0
-	r := pos.GetRank()
-	f := pos.GetFile()
-	retPos := NoPosition
-
-	testPos := PositionFromFileRank(f+1, r+2)
-	if testPos != NoPosition && b.checkKnightColor(testPos, color) {
-		count++
-		retPos = testPos
-	}
-
-	testPos = PositionFromFileRank(f+1, r-2)
-	if testPos != NoPosition && b.checkKnightColor(testPos, color) {
-		count++
-		retPos = testPos
-	}
-
-	testPos = PositionFromFileRank(f+2, r+1)
-	if testPos != NoPosition && b.checkKnightColor(testPos, color) {
-		count++
-		retPos = testPos
-	}
-
-	testPos = PositionFromFileRank(f+2, r-1)
-	if testPos != NoPosition && b.checkKnightColor(testPos, color) {
-		count++
-		retPos = testPos
-	}
-
-	testPos = PositionFromFileRank(f-2, r-1)
-	if testPos != NoPosition && b.checkKnightColor(testPos, color) {
-		count++
-		retPos = testPos
-	}
-
-	testPos = PositionFromFileRank(f-2, r+1)
-	if testPos != NoPosition && b.checkKnightColor(testPos, color) {
-		count++
-		retPos = testPos
-	}
-
-	testPos = PositionFromFileRank(f-1, r-2)
-	if testPos != NoPosition && b.checkKnightColor(testPos, color) {
-		count++
-		retPos = testPos
-	}
-
-	testPos = PositionFromFileRank(f-1, r+2)
-	if testPos != NoPosition && b.checkKnightColor(testPos, color) {
-		count++
-		retPos = testPos
-	}
-
-	if count > 1 {
-		return NoPosition, ErrAmbiguousMove
-	}
-	if count == 0 {
-		return NoPosition, ErrAttackerNotFound
-	}
-	return retPos, nil
-}
-
-func (b Board) checkKnightColor(pos Position, color Color) bool {
-	return (b.GetPiece(pos) == WhiteKnight && color == White) ||
-		(b.GetPiece(pos) == BlackKnight && color == Black)
 }
 
 func (b Board) findAttackingBishop(pos Position, color Color) (Position, error) {
@@ -798,7 +742,7 @@ func (b Board) findAttackingKing(pos Position, color Color) (Position, error) {
 	f := pos.GetFile()
 	f--
 	testPos := PositionFromFileRank(f, r)
-	if b.checkQueenColor(testPos, color) {
+	if b.checkKingColor(testPos, color) {
 		retPos = testPos
 		count++
 	}
@@ -807,7 +751,7 @@ func (b Board) findAttackingKing(pos Position, color Color) (Position, error) {
 	f = pos.GetFile()
 	f++
 	testPos = PositionFromFileRank(f, r)
-	if b.checkQueenColor(testPos, color) {
+	if b.checkKingColor(testPos, color) {
 		retPos = testPos
 		count++
 	}
@@ -816,7 +760,7 @@ func (b Board) findAttackingKing(pos Position, color Color) (Position, error) {
 	f = pos.GetFile()
 	r++
 	testPos = PositionFromFileRank(f, r)
-	if b.checkQueenColor(testPos, color) {
+	if b.checkKingColor(testPos, color) {
 		retPos = testPos
 		count++
 	}
@@ -825,7 +769,7 @@ func (b Board) findAttackingKing(pos Position, color Color) (Position, error) {
 	f = pos.GetFile()
 	r--
 	testPos = PositionFromFileRank(f, r)
-	if b.checkQueenColor(testPos, color) {
+	if b.checkKingColor(testPos, color) {
 		retPos = testPos
 		count++
 	}
@@ -836,7 +780,7 @@ func (b Board) findAttackingKing(pos Position, color Color) (Position, error) {
 	f--
 	r--
 	testPos = PositionFromFileRank(f, r)
-	if b.checkQueenColor(testPos, color) {
+	if b.checkKingColor(testPos, color) {
 		retPos = testPos
 		count++
 	}
@@ -846,7 +790,7 @@ func (b Board) findAttackingKing(pos Position, color Color) (Position, error) {
 	f--
 	r++
 	testPos = PositionFromFileRank(f, r)
-	if b.checkQueenColor(testPos, color) {
+	if b.checkKingColor(testPos, color) {
 		retPos = testPos
 		count++
 	}
@@ -856,7 +800,7 @@ func (b Board) findAttackingKing(pos Position, color Color) (Position, error) {
 	f++
 	r++
 	testPos = PositionFromFileRank(f, r)
-	if b.checkQueenColor(testPos, color) {
+	if b.checkKingColor(testPos, color) {
 		retPos = testPos
 		count++
 	}
@@ -866,7 +810,7 @@ func (b Board) findAttackingKing(pos Position, color Color) (Position, error) {
 	f++
 	r--
 	testPos = PositionFromFileRank(f, r)
-	if b.checkQueenColor(testPos, color) {
+	if b.checkKingColor(testPos, color) {
 		retPos = testPos
 		count++
 	}
@@ -878,8 +822,8 @@ func (b Board) findAttackingKing(pos Position, color Color) (Position, error) {
 }
 
 func (b Board) checkKingColor(pos Position, color Color) bool {
-	return (b.GetPiece(pos) == WhiteQueen && color == White) ||
-		(b.GetPiece(pos) == BlackQueen && color == Black)
+	return (b.GetPiece(pos) == WhiteKing && color == White) ||
+		(b.GetPiece(pos) == BlackKing && color == Black)
 }
 
 func (b Board) containsPieceAt(pos Position) bool {

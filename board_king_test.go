@@ -87,3 +87,12 @@ func (s *BoardSuite) TestBoardMoveFromAlgebraicBlackQueensideCastleQueenCheck(c 
 	c.Assert(err, Equals, ErrMoveThroughCheck)
 	c.Assert(move, Equals, NilMove)
 }
+
+func (s *BoardSuite) TestBoardMoveFromAlgebraicBlackKingG8G7(c *C) {
+	b, err := NewBoardFEN("rnbq1rk1/pppp1p1p/5npb/4p3/4P3/5NPB/PPPP1PKP/RNBQ1R2 b - - 5 6")
+	c.Assert(err, IsNil)
+	move, err := b.MoveFromAlgebraic("Kg7", Black)
+	c.Assert(err, IsNil)
+	c.Assert(move.From, Equals, G8)
+	c.Assert(move.To, Equals, G7)
+}

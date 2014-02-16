@@ -32,7 +32,6 @@ var simple = `[Event "State Ch."]
 `
 
 func (s *PGNSuite) TestParse(c *C) {
-	c.Skip("until board")
 	game, err := Parse(simple)
 	if err != nil {
 		c.Fatal(err)
@@ -43,7 +42,7 @@ func (s *PGNSuite) TestParse(c *C) {
 	if len(game.Moves) == 0 || game.Moves[0].From != D2 || game.Moves[0].To != D4 {
 		c.Fatal("first move is wrong", game.Moves[0])
 	}
-	if len(game.Moves) != 41 || game.Moves[0].From != E5 || game.Moves[0].To != F7 {
-		c.Fatal("last move is wrong", game.Moves[0])
+	if len(game.Moves) != 39 || game.Moves[38].From != E5 || game.Moves[38].To != F7 {
+		c.Fatal("last move is wrong", game.Moves[39])
 	}
 }
