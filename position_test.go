@@ -40,6 +40,10 @@ func (s *PositionSuite) TestGetRank8(c *C) {
 	c.Assert(G8.GetRank(), Equals, Rank8)
 }
 
+func (s *PositionSuite) TestGetNoRank(c *C) {
+	c.Assert(NoPosition.GetRank(), Equals, NoRank)
+}
+
 func (s *PositionSuite) TestGetFileA(c *C) {
 	c.Assert(A1.GetFile(), Equals, FileA)
 }
@@ -70,4 +74,12 @@ func (s *PositionSuite) TestGetFileG(c *C) {
 
 func (s *PositionSuite) TestGetFileH(c *C) {
 	c.Assert(H3.GetFile(), Equals, FileH)
+}
+
+func (s *PositionSuite) TestGetNoFile(c *C) {
+	c.Assert(NoPosition.GetFile(), Equals, NoFile)
+}
+
+func (s *PositionSuite) TestPositionString(c *C) {
+	c.Assert(A1.String(), Equals, "a1")
 }
