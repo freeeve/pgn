@@ -66,6 +66,14 @@ func (s *BoardSuite) TestBoardColorBlackKing(c *C) {
 	c.Assert(BlackKing.Color(), Equals, Black)
 }
 
+func (s *BoardSuite) TestNoColor(c *C) {
+	c.Assert(Empty.Color(), Equals, NoColor)
+}
+
+func (s *BoardSuite) TestNoColorString(c *C) {
+	c.Assert(Empty.Color().String(), Equals, " ")
+}
+
 func (s *BoardSuite) TestBoardMoveFromAlgebraicWhitePawn(c *C) {
 	b := NewBoard()
 	move, err := b.MoveFromAlgebraic("d4", White)
