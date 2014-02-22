@@ -91,8 +91,8 @@ type CastleStatus int8
 const (
 	Both CastleStatus = iota
 	None
-	King
-	Queen
+	Kingside
+	Queenside
 )
 
 func (cs CastleStatus) String(c Color) string {
@@ -107,14 +107,14 @@ func (cs CastleStatus) String(c Color) string {
 		}
 	case None:
 		return "-"
-	case King:
+	case Kingside:
 		switch c {
 		case Black:
 			ret = "k"
 		case White:
 			ret = "K"
 		}
-	case Queen:
+	case Queenside:
 		switch c {
 		case Black:
 			ret = "q"
@@ -125,9 +125,21 @@ func (cs CastleStatus) String(c Color) string {
 	return ret
 }
 
+func (b *Board) MakeAlgebraicMove(str string, color Color) error {
+	move, err := b.MoveFromAlgebraic(str, color)
+	if err != nil {
+		return err
+	}
+	err = b.MakeMove(move)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
 func (b *Board) MoveFromAlgebraic(str string, color Color) (Move, error) {
 	str = strings.Trim(str, "+!?")
-	//fmt.Println("move from alg:", str, "..", color)
+	fmt.Println("move from alg:", str, "..", color)
 	if b.toMove != color {
 		return NilMove, ErrMoveWrongColor
 	}
@@ -293,26 +305,74 @@ func (b *Board) String() string {
 }
 
 func (b *Board) MakeMove(m Move) error {
-	// TODO test/handle special enpassant and castle
+	// TODO test/handle special enpassant
 	p := b.GetPiece(m.From)
 	if p == Empty {
 		return ErrMoveFromEmptySquare
 	}
+
+	// sanity check for wrong color
 	if p.Color() != b.toMove {
 		return ErrMoveWrongColor
 	}
+
+	// see if we're taking a piece
 	take := b.GetPiece(m.To)
 	if take != Empty {
 		b.RemovePiece(m.To, take)
 	}
+
+	// the moving
 	b.SetPiece(m.To, p)
 	b.RemovePiece(m.From, p)
+
+	// handle special cases
+	switch p {
+	case BlackKing:
+		// handle castles
+		if m.From == E8 && m.To == G8 {
+			if b.bCastle != Kingside && b.bCastle != Both {
+				return ErrMoveInvalidCastle
+			}
+			rook := b.GetPiece(H8)
+			b.RemovePiece(H8, rook)
+			b.SetPiece(F8, rook)
+		} else if m.From == E8 && m.To == C8 {
+			if b.bCastle != Queenside && b.bCastle != Both {
+				return ErrMoveInvalidCastle
+			}
+			rook := b.GetPiece(A8)
+			b.RemovePiece(A8, rook)
+			b.SetPiece(D8, rook)
+		}
+	case WhiteKing:
+		// handle castles
+		if m.From == E1 && m.To == G1 {
+			if b.wCastle != Kingside && b.wCastle != Both {
+				return ErrMoveInvalidCastle
+			}
+			rook := b.GetPiece(H1)
+			b.RemovePiece(H1, rook)
+			b.SetPiece(F1, rook)
+		} else if m.From == E1 && m.To == C1 {
+			if b.wCastle != Queenside && b.wCastle != Both {
+				return ErrMoveInvalidCastle
+			}
+			rook := b.GetPiece(A1)
+			b.RemovePiece(A1, rook)
+			b.SetPiece(D1, rook)
+		}
+	}
+
+	// swap next color
 	switch b.toMove {
 	case White:
 		b.toMove = Black
 	case Black:
 		b.toMove = White
 	}
+
+	// handle move number increment
 	return nil
 }
 
@@ -428,12 +488,12 @@ func (b Board) findAttackingPawn(pos Position, color Color) (Position, error) {
 			if b.GetPiece(PositionFromFileRank(pos.GetFile()-1, pos.GetRank()-1)) == WhitePawn {
 				retPos = PositionFromFileRank(pos.GetFile()-1, pos.GetRank()-1)
 			}
-			if b.GetPiece(PositionFromFileRank(pos.GetFile()+1, pos.GetRank()-1)) == WhitePawn {
-				retPos = PositionFromFileRank(pos.GetFile()+1, pos.GetRank()-1)
-			}
-			if b.GetPiece(PositionFromFileRank(pos.GetFile()-1, pos.GetRank()-1)) == WhitePawn {
-				retPos = PositionFromFileRank(pos.GetFile()-1, pos.GetRank()-1)
-			}
+		}
+		if b.GetPiece(PositionFromFileRank(pos.GetFile()+1, pos.GetRank()-1)) == WhitePawn {
+			retPos = PositionFromFileRank(pos.GetFile()+1, pos.GetRank()-1)
+		}
+		if b.GetPiece(PositionFromFileRank(pos.GetFile()-1, pos.GetRank()-1)) == WhitePawn {
+			retPos = PositionFromFileRank(pos.GetFile()-1, pos.GetRank()-1)
 		}
 	} else {
 		// special en-passant case
@@ -834,7 +894,7 @@ func (b Board) containsPieceAt(pos Position) bool {
 
 func (b Board) getKingsideCastle(color Color) (Move, error) {
 	if color == White {
-		if b.wCastle != Both && b.wCastle != King {
+		if b.wCastle != Both && b.wCastle != Kingside {
 			return NilMove, ErrMoveInvalidCastle
 		}
 		if b.containsPieceAt(F1) || b.containsPieceAt(G1) {
@@ -845,7 +905,7 @@ func (b Board) getKingsideCastle(color Color) (Move, error) {
 		}
 		return Move{E1, G1}, nil
 	} else {
-		if b.bCastle != Both && b.bCastle != King {
+		if b.bCastle != Both && b.bCastle != Kingside {
 			return NilMove, ErrMoveInvalidCastle
 		}
 		if b.containsPieceAt(F8) || b.containsPieceAt(G8) {
@@ -860,7 +920,7 @@ func (b Board) getKingsideCastle(color Color) (Move, error) {
 
 func (b Board) getQueensideCastle(color Color) (Move, error) {
 	if color == White {
-		if b.wCastle != Both && b.wCastle != Queen {
+		if b.wCastle != Both && b.wCastle != Queenside {
 			return NilMove, ErrMoveInvalidCastle
 		}
 		if b.containsPieceAt(B1) || b.containsPieceAt(C1) || b.containsPieceAt(D1) {
@@ -869,9 +929,9 @@ func (b Board) getQueensideCastle(color Color) (Move, error) {
 		if b.positionAttackedBy(B1, Black) || b.positionAttackedBy(C1, Black) || b.positionAttackedBy(D1, Black) {
 			return NilMove, ErrMoveThroughCheck
 		}
-		return Move{E1, B1}, nil
+		return Move{E1, C1}, nil
 	} else {
-		if b.bCastle != Both && b.bCastle != Queen {
+		if b.bCastle != Both && b.bCastle != Queenside {
 			return NilMove, ErrMoveInvalidCastle
 		}
 		if b.containsPieceAt(B8) || b.containsPieceAt(C8) || b.containsPieceAt(D8) {
@@ -880,7 +940,7 @@ func (b Board) getQueensideCastle(color Color) (Move, error) {
 		if b.positionAttackedBy(B8, White) || b.positionAttackedBy(C8, White) || b.positionAttackedBy(D8, White) {
 			return NilMove, ErrMoveThroughCheck
 		}
-		return Move{E8, B8}, nil
+		return Move{E8, C8}, nil
 	}
 }
 

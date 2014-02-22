@@ -42,24 +42,24 @@ func ParseFEN(fenstr string) (*FEN, error) {
 	}
 
 	if strings.Contains(castleStr, "k") {
-		fen.BlackCastleStatus = King
+		fen.BlackCastleStatus = Kingside
 	}
 	if strings.Contains(castleStr, "q") {
-		if fen.BlackCastleStatus == King {
+		if fen.BlackCastleStatus == Kingside {
 			fen.BlackCastleStatus = Both
 		} else {
-			fen.BlackCastleStatus = Queen
+			fen.BlackCastleStatus = Queenside
 		}
 	}
 
 	if strings.Contains(castleStr, "K") {
-		fen.WhiteCastleStatus = King
+		fen.WhiteCastleStatus = Kingside
 	}
 	if strings.Contains(castleStr, "Q") {
-		if fen.WhiteCastleStatus == King {
+		if fen.WhiteCastleStatus == Kingside {
 			fen.WhiteCastleStatus = Both
 		} else {
-			fen.WhiteCastleStatus = Queen
+			fen.WhiteCastleStatus = Queenside
 		}
 	}
 

@@ -1,7 +1,11 @@
 package pgn
 
 import (
+	"fmt"
+	"os"
+	"strings"
 	"testing"
+	"text/scanner"
 	. "launchpad.net/gocheck"
 )
 
@@ -32,7 +36,10 @@ var simple = `[Event "State Ch."]
 `
 
 func (s *PGNSuite) TestParse(c *C) {
-	game, err := Parse(simple)
+	r := strings.NewReader(simple)
+	sc := scanner.Scanner{}
+	sc.Init(r)
+	game, err := ParseGame(sc)
 	if err != nil {
 		c.Fatal(err)
 	}
@@ -43,6 +50,22 @@ func (s *PGNSuite) TestParse(c *C) {
 		c.Fatal("first move is wrong", game.Moves[0])
 	}
 	if len(game.Moves) != 39 || game.Moves[38].From != E5 || game.Moves[38].To != F7 {
-		c.Fatal("last move is wrong", game.Moves[39])
+		c.Fatal("last move is wrong", game.Moves[38])
+	}
+}
+
+func (s *PGNSuite) TestPGNScanner(c *C) {
+	c.Skip()
+	f, err := os.Open("polgar.pgn")
+	if err != nil {
+		c.Fatal(err)
+	}
+	ps := NewPGNScanner(f)
+	for ps.Next() {
+		game, err := ps.Scan()
+		if err != nil {
+			fmt.Println(game)
+			c.Fatal(err)
+		}
 	}
 }

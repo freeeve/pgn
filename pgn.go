@@ -2,9 +2,14 @@ package pgn
 
 import (
 	"fmt"
+	"io"
 	"strings"
 	"text/scanner"
 )
+
+type PGNScanner struct {
+	s scanner.Scanner
+}
 
 type Game struct {
 	Moves []Move
@@ -24,11 +29,8 @@ var (
 	NilMove Move = Move{From: NoPosition, To: NoPosition}
 )
 
-func Parse(str string) (*Game, error) {
+func ParseGame(s scanner.Scanner) (*Game, error) {
 	g := Game{Tags: map[string]string{}, Moves: []Move{}}
-	r := strings.NewReader(str)
-	s := scanner.Scanner{}
-	s.Init(r)
 	err := ParseTags(&s, &g)
 	if err != nil {
 		return nil, err
@@ -41,14 +43,11 @@ func Parse(str string) (*Game, error) {
 }
 
 func ParseTags(s *scanner.Scanner, g *Game) error {
+	//fmt.Println("starting tags parse")
 	run := s.Peek()
 	for run != scanner.EOF {
 		switch run {
-		case '[':
-			run = s.Next()
-		case ']':
-			run = s.Next()
-		case '\n':
+		case '[', ']', '\n', '\r':
 			run = s.Next()
 		case '1':
 			return nil
@@ -57,6 +56,7 @@ func ParseTags(s *scanner.Scanner, g *Game) error {
 			tag := s.TokenText()
 			s.Scan()
 			val := s.TokenText()
+			//fmt.Println("tag:", tag, "; val:", val)
 			g.Tags[tag] = strings.Trim(val, "\"")
 		}
 		run = s.Peek()
@@ -78,6 +78,7 @@ func isEnd(str string) bool {
 }
 
 func ParseMoves(s *scanner.Scanner, g *Game) error {
+	//fmt.Println("starting moves parse")
 	run := s.Peek()
 	board := NewBoard()
 	var err error
@@ -100,8 +101,9 @@ func ParseMoves(s *scanner.Scanner, g *Game) error {
 			for run != '}' && run != scanner.EOF {
 				run = s.Next()
 			}
-		case '+', '-', '!', '?':
+		case '.', '+', '!', '?', '\n', '\r':
 			run = s.Next()
+			run = s.Peek()
 		default:
 			s.Scan()
 			if num == "" {
@@ -122,6 +124,7 @@ func ParseMoves(s *scanner.Scanner, g *Game) error {
 				}
 				move, err := board.MoveFromAlgebraic(white, White)
 				if err != nil {
+					fmt.Println(board)
 					return err
 				}
 				g.Moves = append(g.Moves, move)
@@ -140,6 +143,7 @@ func ParseMoves(s *scanner.Scanner, g *Game) error {
 				}
 				move, err := board.MoveFromAlgebraic(black, Black)
 				if err != nil {
+					fmt.Println(board)
 					return err
 				}
 				g.Moves = append(g.Moves, move)
@@ -153,4 +157,24 @@ func ParseMoves(s *scanner.Scanner, g *Game) error {
 		}
 	}
 	return nil
+}
+
+func NewPGNScanner(r io.Reader) *PGNScanner {
+	s := scanner.Scanner{}
+	s.Init(r)
+	s.Mode = scanner.ScanIdents | scanner.ScanChars | scanner.ScanInts | scanner.ScanStrings
+	return &PGNScanner{s: s}
+}
+
+func (ps *PGNScanner) Next() bool {
+	if ps.s.Peek() == scanner.EOF {
+		return false
+	}
+	return true
+}
+
+func (ps *PGNScanner) Scan() (*Game, error) {
+	game, err := ParseGame(ps.s)
+	fmt.Println(game)
+	return game, err
 }
