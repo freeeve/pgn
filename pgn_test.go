@@ -55,7 +55,7 @@ func (s *PGNSuite) TestParse(c *C) {
 }
 
 func (s *PGNSuite) TestPGNScanner(c *C) {
-	c.Skip()
+	c.Skip("not quite")
 	f, err := os.Open("polgar.pgn")
 	if err != nil {
 		c.Fatal(err)
