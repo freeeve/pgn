@@ -177,3 +177,7 @@ r4rk1/1p1npp1p/2bp2p1/p7/PqBQP3/1PN2P2/2P3PP/3R1RK1 b KQkq - 2 19
 8/7p/8/7k/8/4K3/8/8 w KQkq - 0 57
 8/7p/8/7k/8/8/5K2/8 b KQkq - 1 57
 ```
+
+## license
+
+MIT License, see LICENSE file.
