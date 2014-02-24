@@ -10,7 +10,7 @@ Normal go install... `go get github.com/wfreeman/pgn`
 
 ## minimum viable snippet
 
-```
+```Go
 package main
 
 import (
