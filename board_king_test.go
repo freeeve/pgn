@@ -104,8 +104,8 @@ func (s *BoardSuite) TestBoardMakeAlgebraicMoveWhiteKingsideCastle(c *C) {
 	c.Assert(err, IsNil)
 	c.Assert(b.GetPiece(G1), Equals, WhiteKing)
 	c.Assert(b.GetPiece(F1), Equals, WhiteRook)
-	c.Assert(b.GetPiece(E1), Equals, Empty)
-	c.Assert(b.GetPiece(H1), Equals, Empty)
+	c.Assert(b.GetPiece(E1), Equals, NoPiece)
+	c.Assert(b.GetPiece(H1), Equals, NoPiece)
 }
 
 func (s *BoardSuite) TestBoardMakeAlgebraicMoveBlackKingsideCastle(c *C) {
@@ -115,8 +115,8 @@ func (s *BoardSuite) TestBoardMakeAlgebraicMoveBlackKingsideCastle(c *C) {
 	c.Assert(err, IsNil)
 	c.Assert(b.GetPiece(G8), Equals, BlackKing)
 	c.Assert(b.GetPiece(F8), Equals, BlackRook)
-	c.Assert(b.GetPiece(E8), Equals, Empty)
-	c.Assert(b.GetPiece(H8), Equals, Empty)
+	c.Assert(b.GetPiece(E8), Equals, NoPiece)
+	c.Assert(b.GetPiece(H8), Equals, NoPiece)
 }
 
 func (s *BoardSuite) TestBoardMakeAlgebraicMoveWhiteQueensideCastle(c *C) {
@@ -126,8 +126,8 @@ func (s *BoardSuite) TestBoardMakeAlgebraicMoveWhiteQueensideCastle(c *C) {
 	c.Assert(err, IsNil)
 	c.Assert(b.GetPiece(C1), Equals, WhiteKing)
 	c.Assert(b.GetPiece(D1), Equals, WhiteRook)
-	c.Assert(b.GetPiece(A1), Equals, Empty)
-	c.Assert(b.GetPiece(E1), Equals, Empty)
+	c.Assert(b.GetPiece(A1), Equals, NoPiece)
+	c.Assert(b.GetPiece(E1), Equals, NoPiece)
 }
 
 func (s *BoardSuite) TestBoardMakeAlgebraicMoveBlackQueensideCastle(c *C) {
@@ -137,6 +137,6 @@ func (s *BoardSuite) TestBoardMakeAlgebraicMoveBlackQueensideCastle(c *C) {
 	c.Assert(err, IsNil)
 	c.Assert(b.GetPiece(C8), Equals, BlackKing)
 	c.Assert(b.GetPiece(D8), Equals, BlackRook)
-	c.Assert(b.GetPiece(E8), Equals, Empty)
-	c.Assert(b.GetPiece(A8), Equals, Empty)
+	c.Assert(b.GetPiece(E8), Equals, NoPiece)
+	c.Assert(b.GetPiece(A8), Equals, NoPiece)
 }

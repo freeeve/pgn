@@ -67,11 +67,11 @@ func (s *BoardSuite) TestBoardColorBlackKing(c *C) {
 }
 
 func (s *BoardSuite) TestNoColor(c *C) {
-	c.Assert(Empty.Color(), Equals, NoColor)
+	c.Assert(NoPiece.Color(), Equals, NoColor)
 }
 
 func (s *BoardSuite) TestNoColorString(c *C) {
-	c.Assert(Empty.Color().String(), Equals, " ")
+	c.Assert(NoPiece.Color().String(), Equals, " ")
 }
 
 func (s *BoardSuite) TestBoardContainsPieceAtA1(c *C) {

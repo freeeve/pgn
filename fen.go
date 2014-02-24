@@ -81,7 +81,7 @@ func FORFromBoard(b *Board) string {
 		for x := 'a'; x <= 'h'; x++ {
 			pos, _ := ParsePosition(fmt.Sprintf("%c%c", x, y))
 			p := b.GetPiece(pos)
-			if p == Empty {
+			if p == NoPiece {
 				count++
 			} else {
 				if count > 0 {

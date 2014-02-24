@@ -17,25 +17,29 @@ type Game struct {
 }
 
 type Move struct {
-	From Position
-	To   Position
+	From    Position
+	To      Position
+	Promote Piece
 }
 
 func (m Move) String() string {
-	return fmt.Sprintf("%v%v", m.From, m.To)
+	if m.Promote == NoPiece {
+		return fmt.Sprintf("%v%v", m.From, m.To)
+	}
+	return fmt.Sprintf("%v%v%v", m.From, m.To, m.Promote)
 }
 
 var (
 	NilMove Move = Move{From: NoPosition, To: NoPosition}
 )
 
-func ParseGame(s scanner.Scanner) (*Game, error) {
+func ParseGame(s *scanner.Scanner) (*Game, error) {
 	g := Game{Tags: map[string]string{}, Moves: []Move{}}
-	err := ParseTags(&s, &g)
+	err := ParseTags(s, &g)
 	if err != nil {
 		return nil, err
 	}
-	err = ParseMoves(&s, &g)
+	err = ParseMoves(s, &g)
 	if err != nil {
 		return nil, err
 	}
@@ -79,6 +83,7 @@ func isEnd(str string) bool {
 
 func ParseMoves(s *scanner.Scanner, g *Game) error {
 	//fmt.Println("starting moves parse")
+	s.Mode = scanner.ScanIdents | scanner.ScanChars | scanner.ScanInts | scanner.ScanStrings
 	run := s.Peek()
 	board := NewBoard()
 	var err error
@@ -108,6 +113,27 @@ func ParseMoves(s *scanner.Scanner, g *Game) error {
 			s.Scan()
 			if num == "" {
 				num = s.TokenText()
+				for s.Peek() == '-' {
+					s.Scan()
+					num += s.TokenText()
+					s.Scan()
+					num += s.TokenText()
+				}
+				for s.Peek() == '/' {
+					s.Scan()
+					num += s.TokenText()
+					s.Scan()
+					num += s.TokenText()
+					s.Scan()
+					num += s.TokenText()
+					s.Scan()
+					num += s.TokenText()
+					s.Scan()
+					num += s.TokenText()
+					s.Scan()
+					num += s.TokenText()
+				}
+				//fmt.Println("num: ", num)
 				if isEnd(num) {
 					return nil
 				}
@@ -119,8 +145,28 @@ func ParseMoves(s *scanner.Scanner, g *Game) error {
 					s.Scan()
 					white += s.TokenText()
 				}
+				for s.Peek() == '/' {
+					s.Scan()
+					white += s.TokenText()
+					s.Scan()
+					white += s.TokenText()
+					s.Scan()
+					white += s.TokenText()
+					s.Scan()
+					white += s.TokenText()
+					s.Scan()
+					white += s.TokenText()
+					s.Scan()
+					white += s.TokenText()
+				}
 				if isEnd(white) {
 					return nil
+				}
+				if s.Peek() == '=' {
+					s.Scan()
+					white += s.TokenText()
+					s.Scan()
+					white += s.TokenText()
 				}
 				move, err := board.MoveFromAlgebraic(white, White)
 				if err != nil {
@@ -138,8 +184,28 @@ func ParseMoves(s *scanner.Scanner, g *Game) error {
 					s.Scan()
 					black += s.TokenText()
 				}
+				for s.Peek() == '/' {
+					s.Scan()
+					black += s.TokenText()
+					s.Scan()
+					black += s.TokenText()
+					s.Scan()
+					black += s.TokenText()
+					s.Scan()
+					black += s.TokenText()
+					s.Scan()
+					black += s.TokenText()
+					s.Scan()
+					black += s.TokenText()
+				}
 				if isEnd(black) {
 					return nil
+				}
+				if s.Peek() == '=' {
+					s.Scan()
+					black += s.TokenText()
+					s.Scan()
+					black += s.TokenText()
 				}
 				move, err := board.MoveFromAlgebraic(black, Black)
 				if err != nil {
@@ -162,7 +228,6 @@ func ParseMoves(s *scanner.Scanner, g *Game) error {
 func NewPGNScanner(r io.Reader) *PGNScanner {
 	s := scanner.Scanner{}
 	s.Init(r)
-	s.Mode = scanner.ScanIdents | scanner.ScanChars | scanner.ScanInts | scanner.ScanStrings
 	return &PGNScanner{s: s}
 }
 
@@ -174,7 +239,7 @@ func (ps *PGNScanner) Next() bool {
 }
 
 func (ps *PGNScanner) Scan() (*Game, error) {
-	game, err := ParseGame(ps.s)
-	fmt.Println(game)
+	game, err := ParseGame(&ps.s)
+	//fmt.Println(game)
 	return game, err
 }
