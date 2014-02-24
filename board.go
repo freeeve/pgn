@@ -439,6 +439,16 @@ func (b *Board) MakeMove(m Move) error {
 	}
 
 	// handle move number increment
+	if b.toMove == White {
+		b.fullmove++
+	}
+
+	// handle halfmove clock
+	if take != NoPiece || p == WhitePawn || p == BlackPawn {
+		b.halfmoveClock = 0
+	} else {
+		b.halfmoveClock++
+	}
 	return nil
 }
 
