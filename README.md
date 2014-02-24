@@ -11,38 +11,42 @@ Normal go install... `go get github.com/wfreeman/pgn`
 ## minimum viable snippet
 
 ```
+package main
+
 import (
-  "fmt"
-  "os"
-  "github.com/wfreeman/pgn"
+	"fmt"
+	"log"
+	"os"
+
+	"github.com/wfreeman/pgn"
 )
 
 func main() {
-   f, err := os.Open("polgar.pgn")
-   if err != nil {
-      c.Fatal(err)
-   }
-   ps := NewPGNScanner(f)
-   // while there's more to read in the file
-   for ps.Next() {
-      // scan the next game
-      game, err := ps.Scan()
-      if err != nil {
-         log.Fatal(err)
-      }
-      
-      // print out tags
-      fmt.Println(game.Tags)
-      
-      // make a new board so we can get FEN positions
-      b := Board{}
-      for move := range game.Moves {
-         // make the move on the board
-         b.MakeMove(move)
-         // print out FEN for each move in the game
-         fmt.Println(game.String())
-      }
-   }
+	f, err := os.Open("polgar.pgn")
+	if err != nil {
+		log.Fatal(err)
+	}
+	ps := pgn.NewPGNScanner(f)
+	// while there's more to read in the file
+	for ps.Next() {
+		// scan the next game
+		game, err := ps.Scan()
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		// print out tags
+		fmt.Println(game.Tags)
+
+		// make a new board so we can get FEN positions
+		b := pgn.NewBoard()
+		for _, move := range game.Moves {
+			// make the move on the board
+			b.MakeMove(move)
+			// print out FEN for each move in the game
+			fmt.Println(b)
+		}
+	}
 }
 ```
 
