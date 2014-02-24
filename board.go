@@ -366,6 +366,23 @@ func (b *Board) MakeMove(m Move) error {
 
 	// handle special cases
 	switch p {
+	case BlackRook:
+		switch m.From {
+		case A8:
+			switch b.bCastle {
+			case Both:
+				b.bCastle = Kingside
+			case Queenside:
+				b.bCastle = None
+			}
+		case H8:
+			switch b.bCastle {
+			case Both:
+				b.bCastle = Queenside
+			case Kingside:
+				b.bCastle = None
+			}
+		}
 	case BlackPawn:
 		if m.From.GetFile() != m.To.GetFile() &&
 			take == NoPiece {
@@ -391,6 +408,24 @@ func (b *Board) MakeMove(m Move) error {
 			rook := b.GetPiece(A8)
 			b.RemovePiece(A8, rook)
 			b.SetPiece(D8, rook)
+		}
+		b.bCastle = None
+	case WhiteRook:
+		switch m.From {
+		case A1:
+			switch b.wCastle {
+			case Both:
+				b.wCastle = Kingside
+			case Queenside:
+				b.wCastle = None
+			}
+		case H1:
+			switch b.wCastle {
+			case Both:
+				b.wCastle = Queenside
+			case Kingside:
+				b.wCastle = None
+			}
 		}
 	case WhitePawn:
 		if m.From.GetFile() != m.To.GetFile() &&
@@ -428,6 +463,7 @@ func (b *Board) MakeMove(m Move) error {
 			b.RemovePiece(A1, rook)
 			b.SetPiece(D1, rook)
 		}
+		b.wCastle = None
 	}
 
 	// swap next color
@@ -449,6 +485,10 @@ func (b *Board) MakeMove(m Move) error {
 	} else {
 		b.halfmoveClock++
 	}
+
+	// save lastMove
+	b.lastMove = m
+
 	return nil
 }
 
@@ -553,61 +593,75 @@ func (b Board) GetPiece(p Position) Piece {
 func (b Board) findAttackingPawn(pos Position, color Color, check bool) (Position, error) {
 	retPos := NoPosition
 	count := 0
-	if color == White {
+	switch color {
+	case White:
 		// special en-passant case
 		if b.lastMove.To.GetFile() == pos.GetFile() &&
 			b.lastMove.To.GetRank() == pos.GetRank()-1 &&
 			b.lastMove.From.GetRank() == pos.GetRank()+1 &&
 			b.GetPiece(PositionFromFileRank(pos.GetFile(), pos.GetRank()-1)) == BlackPawn {
-			if b.GetPiece(PositionFromFileRank(pos.GetFile()+1, pos.GetRank()-1)) == WhitePawn &&
-				(!check || !b.moveIntoCheck(Move{PositionFromFileRank(pos.GetFile()+1, pos.GetRank()-1), pos, NoPiece}, color)) {
-				retPos = PositionFromFileRank(pos.GetFile()+1, pos.GetRank()-1)
+			testPos := PositionFromFileRank(pos.GetFile()+1, pos.GetRank()-1)
+			if b.GetPiece(testPos) == WhitePawn &&
+				(!check || !b.moveIntoCheck(Move{testPos, pos, NoPiece}, color)) {
+				retPos = testPos
 				count++
+				break
 			}
-			if b.GetPiece(PositionFromFileRank(pos.GetFile()-1, pos.GetRank()-1)) == WhitePawn &&
-				(!check || !b.moveIntoCheck(Move{PositionFromFileRank(pos.GetFile()-1, pos.GetRank()-1), pos, NoPiece}, color)) {
-				retPos = PositionFromFileRank(pos.GetFile()-1, pos.GetRank()-1)
+			testPos = PositionFromFileRank(pos.GetFile()-1, pos.GetRank()-1)
+			if b.GetPiece(testPos) == WhitePawn &&
+				(!check || !b.moveIntoCheck(Move{testPos, pos, NoPiece}, color)) {
+				retPos = testPos
 				count++
+				break
 			}
 		}
-		if b.GetPiece(PositionFromFileRank(pos.GetFile()+1, pos.GetRank()-1)) == WhitePawn &&
-			(!check || !b.moveIntoCheck(Move{PositionFromFileRank(pos.GetFile()+1, pos.GetRank()-1), pos, NoPiece}, color)) {
-			retPos = PositionFromFileRank(pos.GetFile()+1, pos.GetRank()-1)
+		testPos := PositionFromFileRank(pos.GetFile()+1, pos.GetRank()-1)
+		if b.GetPiece(testPos) == WhitePawn &&
+			(!check || !b.moveIntoCheck(Move{testPos, pos, NoPiece}, color)) {
+			retPos = testPos
 			count++
 		}
-		if b.GetPiece(PositionFromFileRank(pos.GetFile()-1, pos.GetRank()-1)) == WhitePawn &&
-			(!check || !b.moveIntoCheck(Move{PositionFromFileRank(pos.GetFile()-1, pos.GetRank()-1), pos, NoPiece}, color)) {
-			retPos = PositionFromFileRank(pos.GetFile()-1, pos.GetRank()-1)
+		testPos = PositionFromFileRank(pos.GetFile()-1, pos.GetRank()-1)
+		if b.GetPiece(testPos) == WhitePawn &&
+			(!check || !b.moveIntoCheck(Move{testPos, pos, NoPiece}, color)) {
+			retPos = testPos
 			count++
 		}
-	} else {
+	case Black:
 		// special en-passant case
 		if b.lastMove.To.GetFile() == pos.GetFile() &&
 			b.lastMove.To.GetRank() == pos.GetRank()+1 &&
 			b.lastMove.From.GetRank() == pos.GetRank()-1 &&
 			b.GetPiece(PositionFromFileRank(pos.GetFile(), pos.GetRank()+1)) == WhitePawn {
-			if b.GetPiece(PositionFromFileRank(pos.GetFile()+1, pos.GetRank()+1)) == BlackPawn &&
-				(!check || !b.moveIntoCheck(Move{PositionFromFileRank(pos.GetFile()+1, pos.GetRank()+1), pos, NoPiece}, color)) {
-				retPos = PositionFromFileRank(pos.GetFile()+1, pos.GetRank()+1)
+			testPos := PositionFromFileRank(pos.GetFile()+1, pos.GetRank()+1)
+			if b.GetPiece(testPos) == BlackPawn &&
+				(!check || !b.moveIntoCheck(Move{testPos, pos, NoPiece}, color)) {
+				retPos = testPos
 				count++
+				break
 			}
-			if b.GetPiece(PositionFromFileRank(pos.GetFile()-1, pos.GetRank()+1)) == BlackPawn &&
-				(!check || !b.moveIntoCheck(Move{PositionFromFileRank(pos.GetFile()-1, pos.GetRank()+1), pos, NoPiece}, color)) {
-				retPos = PositionFromFileRank(pos.GetFile()-1, pos.GetRank()+1)
+			testPos = PositionFromFileRank(pos.GetFile()-1, pos.GetRank()+1)
+			if b.GetPiece(testPos) == BlackPawn &&
+				(!check || !b.moveIntoCheck(Move{testPos, pos, NoPiece}, color)) {
+				retPos = testPos
 				count++
+				break
 			}
 		}
-		if b.GetPiece(PositionFromFileRank(pos.GetFile()+1, pos.GetRank()+1)) == BlackPawn &&
-			(!check || !b.moveIntoCheck(Move{PositionFromFileRank(pos.GetFile()+1, pos.GetRank()+1), pos, NoPiece}, color)) {
-			retPos = PositionFromFileRank(pos.GetFile()+1, pos.GetRank()+1)
+		testPos := PositionFromFileRank(pos.GetFile()+1, pos.GetRank()+1)
+		if b.GetPiece(testPos) == BlackPawn &&
+			(!check || !b.moveIntoCheck(Move{testPos, pos, NoPiece}, color)) {
+			retPos = testPos
 			count++
 		}
-		if b.GetPiece(PositionFromFileRank(pos.GetFile()-1, pos.GetRank()+1)) == BlackPawn &&
-			(!check || !b.moveIntoCheck(Move{PositionFromFileRank(pos.GetFile()-1, pos.GetRank()+1), pos, NoPiece}, color)) {
-			retPos = PositionFromFileRank(pos.GetFile()-1, pos.GetRank()+1)
+		testPos = PositionFromFileRank(pos.GetFile()-1, pos.GetRank()+1)
+		if b.GetPiece(testPos) == BlackPawn &&
+			(!check || !b.moveIntoCheck(Move{testPos, pos, NoPiece}, color)) {
+			retPos = testPos
 			count++
 		}
 	}
+
 	if count > 1 {
 		return NoPosition, ErrAmbiguousMove
 	}

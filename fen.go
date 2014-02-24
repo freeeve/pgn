@@ -109,6 +109,14 @@ func FENFromBoard(b *Board) FEN {
 	f.BlackCastleStatus = b.bCastle
 	f.HalfmoveClock = b.halfmoveClock
 	f.Fullmove = b.fullmove
+	if b.GetPiece(b.lastMove.To) == WhitePawn &&
+		b.lastMove.To.GetRank()-2 == b.lastMove.From.GetRank() {
+		f.EnPassantVulnerable = PositionFromFileRank(b.lastMove.To.GetFile(), b.lastMove.To.GetRank()-1)
+	}
+	if b.GetPiece(b.lastMove.To) == BlackPawn &&
+		b.lastMove.To.GetRank()+2 == b.lastMove.From.GetRank() {
+		f.EnPassantVulnerable = PositionFromFileRank(b.lastMove.To.GetFile(), b.lastMove.To.GetRank()+1)
+	}
 	return f
 }
 
@@ -116,6 +124,9 @@ func (fen FEN) String() string {
 	castleStatus := fen.WhiteCastleStatus.String(White) + fen.BlackCastleStatus.String(Black)
 	if castleStatus == "--" {
 		castleStatus = "-"
+	}
+	if castleStatus != "-" && strings.Contains(castleStatus, "-") {
+		castleStatus = strings.Trim(castleStatus, "-")
 	}
 	return fmt.Sprintf("%s %v %s %s %d %d",
 		fen.FOR,
