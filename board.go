@@ -130,6 +130,36 @@ func (cs CastleStatus) String(c Color) string {
 	return ret
 }
 
+func (b *Board) MakeCoordMove(str string) error {
+	move, err := MoveFromCoord(str)
+	if err != nil {
+		return err
+	}
+	err = b.MakeMove(move)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func MoveFromCoord(str string, color Color) (Move, error) {
+	// handle promotion
+	promote := NoPiece
+	if len(str) == 5 {
+		promote = Piece(str[len(str)-1])
+		promote.Normalize()
+		str = str[:len(str)-2]
+	}
+	fromPos, err := ParsePosition(str[:2])
+	if err != nil {
+		return NilMove, ErrUnknownMove
+	}
+	toPos, err := ParsePosition(str[2:4])
+	if err != nil {
+		return NilMove, ErrUnknownMove
+	}
+   return Move{fromPos, toPos, promote}, nil
+}
 func (b *Board) MakeAlgebraicMove(str string, color Color) error {
 	move, err := b.MoveFromAlgebraic(str, color)
 	if err != nil {
