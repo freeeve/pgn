@@ -142,7 +142,7 @@ func (b *Board) MakeCoordMove(str string) error {
 	return nil
 }
 
-func MoveFromCoord(str string, color Color) (Move, error) {
+func MoveFromCoord(str string) (Move, error) {
 	// handle promotion
 	promote := NoPiece
 	if len(str) == 5 {
