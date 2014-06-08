@@ -148,13 +148,13 @@ func MoveFromCoord(str string) (Move, error) {
 	if len(str) == 5 {
 		promote = Piece(str[len(str)-1])
 		promote.Normalize()
-		str = str[:len(str)-2]
+		str = str[:len(str)-1]
 	}
 	fromPos, err := ParsePosition(str[:2])
 	if err != nil {
 		return NilMove, ErrUnknownMove
 	}
-	toPos, err := ParsePosition(str[2:4])
+	toPos, err := ParsePosition(str[2:])
 	if err != nil {
 		return NilMove, ErrUnknownMove
 	}
