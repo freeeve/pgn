@@ -128,3 +128,13 @@ func (s *BoardSuite) TestBoardMoveCoordPromote(c *C) {
    c.Assert(err, IsNil)
 	c.Assert(b.String(), Equals, "rn1N1bnr/ppp1kppp/8/4pb2/3P3q/8/PPP2PPP/RNBQKBNR b KQ - 0 6")
 }
+
+func (s *BoardSuite) TestCheckmateIsTrimmed(c *C) {
+	b, err := NewBoardFEN("7k/3P1K1p/6pB/p4p2/8/P6P/4p1P1/8 w - - 0 43")
+	c.Assert(err, IsNil)
+	move, err := b.MoveFromAlgebraic("d8=R#", White)
+	c.Assert(err, IsNil)
+	c.Assert(move.From, Equals, D7)
+	c.Assert(move.To, Equals, D8)
+	c.Assert(move.Promote, Equals, BlackRook)
+}

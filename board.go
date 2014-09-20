@@ -173,7 +173,7 @@ func (b *Board) MakeAlgebraicMove(str string, color Color) error {
 }
 
 func (b *Board) MoveFromAlgebraic(str string, color Color) (Move, error) {
-	str = strings.Trim(str, "+!?")
+	str = strings.Trim(str, "+!?#")
 	//fmt.Println("move from alg:", str, "..", color)
 	if b.toMove != color {
 		return NilMove, ErrMoveWrongColor
