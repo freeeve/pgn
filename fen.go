@@ -18,8 +18,8 @@ type FEN struct {
 
 func ParseFEN(fenstr string) (*FEN, error) {
 	fen := FEN{}
-   fen.BlackCastleStatus = None
-   fen.WhiteCastleStatus = None
+	fen.BlackCastleStatus = None
+	fen.WhiteCastleStatus = None
 	colorStr := ""
 	castleStr := ""
 	enPassant := ""

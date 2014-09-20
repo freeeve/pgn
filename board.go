@@ -158,7 +158,7 @@ func MoveFromCoord(str string) (Move, error) {
 	if err != nil {
 		return NilMove, ErrUnknownMove
 	}
-   return Move{fromPos, toPos, promote}, nil
+	return Move{fromPos, toPos, promote}, nil
 }
 func (b *Board) MakeAlgebraicMove(str string, color Color) error {
 	move, err := b.MoveFromAlgebraic(str, color)
@@ -173,7 +173,7 @@ func (b *Board) MakeAlgebraicMove(str string, color Color) error {
 }
 
 func (b *Board) MoveFromAlgebraic(str string, color Color) (Move, error) {
-	str = strings.Trim(str, "+!?")
+	str = strings.Trim(str, "+!?#")
 	//fmt.Println("move from alg:", str, "..", color)
 	if b.toMove != color {
 		return NilMove, ErrMoveWrongColor
