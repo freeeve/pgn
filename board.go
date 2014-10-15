@@ -605,6 +605,7 @@ func (b Board) findAttackingPawn(pos Position, color Color, check bool) (Positio
 				(!check || !b.moveIntoCheck(Move{testPos, pos, NoPiece}, color)) {
 				retPos = testPos
 				count++
+				// TODO remove these breaks
 				break
 			}
 			testPos = PositionFromFileRank(pos.GetFile()-1, pos.GetRank()-1)
