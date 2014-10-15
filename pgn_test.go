@@ -2,11 +2,11 @@ package pgn
 
 import (
 	"fmt"
+	. "launchpad.net/gocheck"
 	"os"
 	"strings"
 	"testing"
 	"text/scanner"
-	. "launchpad.net/gocheck"
 )
 
 func Test(t *testing.T) { TestingT(t) }
