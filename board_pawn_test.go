@@ -1,7 +1,7 @@
 package pgn
 
 import (
-	. "launchpad.net/gocheck"
+	. "gopkg.in/check.v1"
 )
 
 func (s *BoardSuite) TestBoardMoveFromAlgebraicWhitePawn(c *C) {

@@ -2,11 +2,11 @@ package pgn
 
 import (
 	"fmt"
-	. "launchpad.net/gocheck"
 	"os"
 	"strings"
 	"testing"
 	"text/scanner"
+	. "gopkg.in/check.v1"
 )
 
 func Test(t *testing.T) { TestingT(t) }
@@ -69,7 +69,7 @@ func (s *PGNSuite) TestPGNScanner(c *C) {
 	}
 }
 
-func (s *PGNSuite) TestPGNParseWithChechmate(c *C) {
+func (s *PGNSuite) TestPGNParseWithCheckmate(c *C) {
 	pgnstr := `[Event "Live Chess"]
 [Site "Chess.com"]
 [Date "2014.10.10"]
