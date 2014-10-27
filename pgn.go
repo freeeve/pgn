@@ -106,7 +106,7 @@ func ParseMoves(s *scanner.Scanner, g *Game) error {
 			for run != '}' && run != scanner.EOF {
 				run = s.Next()
 			}
-		case '.', '+', '!', '?', '\n', '\r':
+		case '#', '.', '+', '!', '?', '\n', '\r':
 			run = s.Next()
 			run = s.Peek()
 		default:
