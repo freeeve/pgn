@@ -2,11 +2,11 @@ package pgn
 
 import (
 	"fmt"
-	. "launchpad.net/gocheck"
 	"os"
 	"strings"
 	"testing"
 	"text/scanner"
+	. "gopkg.in/check.v1"
 )
 
 func Test(t *testing.T) { TestingT(t) }
@@ -67,6 +67,31 @@ func (s *PGNSuite) TestPGNScanner(c *C) {
 			c.Fatal(err)
 		}
 	}
+}
+
+func (s *PGNSuite) TestPGNParseWithCheckmate(c *C) {
+	pgnstr := `[Event "Live Chess"]
+[Site "Chess.com"]
+[Date "2014.10.10"]
+[White "MarkoMakaj"]
+[Black "AndreyOstrovskiy"]
+[Result "1-0"]
+[WhiteElo "2196"]
+[BlackElo "2226"]
+[TimeControl "1|1"]
+[Termination "MarkoMakaj won by checkmate"]
+
+1.d4 g6 2.c4 Bg7 3.Nc3 c5 4.Nf3 cxd4 5.Nxd4 Nc6 6.Nc2 Nf6 7.g3 O-O 8.Bg2 b6 9.O-O Bb7 10.b3 Rc8
+ 11.Bb2 Qc7 12.Qd2 Qb8 13.Ne3 Rfd8 14.Rfd1 e6 15.Rac1 Qa8 16.Nb5 d5 17.cxd5 exd5 18.Bxf6 Bxf6 19.Nxd5 Bg7 20.e4 a6
+ 21.Nbc3 b5 22.Qf4 Qa7 23.Nf6+ Kh8 24.Ncd5 Nd4 25.Qh4 h6 26.Rxc8 Rxc8 27.e5 Ne6 28.Ng4 Rc2 29.Nde3 Rxa2 30.Nxh6 Bxg2
+ 31.Kxg2 Bxe5 32.Nxf7+ Kg7 33.Nxe5 Qxe3 34.Qe7+ Kh6 35.Nf7+ Kh5 36.Qh4# 1-0
+`
+	r := strings.NewReader(pgnstr)
+	sc := scanner.Scanner{}
+	sc.Init(r)
+	game, err := ParseGame(&sc)
+	c.Assert(err, IsNil)
+	c.Assert(len(game.Moves), Equals, 71)
 }
 
 func (s *PGNSuite) TestPGNParseInfiniteLoopF4(c *C) {
