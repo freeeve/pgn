@@ -143,12 +143,16 @@ func (b *Board) MakeCoordMove(str string) error {
 }
 
 func MoveFromCoord(str string) (Move, error) {
+	length := len(str)
+	if length < 4 {
+		return NilMove, ErrUnknownMove
+	}
 	// handle promotion
 	promote := NoPiece
-	if len(str) == 5 {
-		promote = Piece(str[len(str)-1])
+	if length == 5 {
+		promote = Piece(str[length-1])
 		promote.Normalize()
-		str = str[:len(str)-1]
+		str = str[:length-1]
 	}
 	fromPos, err := ParsePosition(str[:2])
 	if err != nil {
@@ -160,6 +164,7 @@ func MoveFromCoord(str string) (Move, error) {
 	}
 	return Move{fromPos, toPos, promote}, nil
 }
+
 func (b *Board) MakeAlgebraicMove(str string, color Color) error {
 	move, err := b.MoveFromAlgebraic(str, color)
 	if err != nil {
