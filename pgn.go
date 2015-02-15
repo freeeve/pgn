@@ -111,6 +111,10 @@ func ParseMoves(s *scanner.Scanner, g *Game) error {
 			run = s.Peek()
 		default:
 			s.Scan()
+			if s.TokenText() == "{" {
+				run = '{'
+				continue
+			}
 			if num == "" {
 				num = s.TokenText()
 				for s.Peek() == '-' {
@@ -133,7 +137,6 @@ func ParseMoves(s *scanner.Scanner, g *Game) error {
 					s.Scan()
 					num += s.TokenText()
 				}
-				//fmt.Println("num: ", num)
 				if isEnd(num) {
 					return nil
 				}
@@ -175,7 +178,6 @@ func ParseMoves(s *scanner.Scanner, g *Game) error {
 				}
 				g.Moves = append(g.Moves, move)
 				board.MakeMove(move)
-				//fmt.Println("making move for white:", move)
 			} else if black == "" {
 				black = s.TokenText()
 				for s.Peek() == '-' {
@@ -214,7 +216,6 @@ func ParseMoves(s *scanner.Scanner, g *Game) error {
 				}
 				g.Moves = append(g.Moves, move)
 				board.MakeMove(move)
-				//fmt.Println("making move for black:", move)
 				num = ""
 				white = ""
 				black = ""
