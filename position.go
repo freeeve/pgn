@@ -102,161 +102,37 @@ const (
 )
 
 func ParsePosition(pstr string) (Position, error) {
-	switch pstr[0] {
-	case 'A', 'a':
-		switch pstr[1] {
-		case '1':
-			return A1, nil
-		case '2':
-			return A2, nil
-		case '3':
-			return A3, nil
-		case '4':
-			return A4, nil
-		case '5':
-			return A5, nil
-		case '6':
-			return A6, nil
-		case '7':
-			return A7, nil
-		case '8':
-			return A8, nil
-		}
-	case 'B', 'b':
-		switch pstr[1] {
-		case '1':
-			return B1, nil
-		case '2':
-			return B2, nil
-		case '3':
-			return B3, nil
-		case '4':
-			return B4, nil
-		case '5':
-			return B5, nil
-		case '6':
-			return B6, nil
-		case '7':
-			return B7, nil
-		case '8':
-			return B8, nil
-		}
-	case 'C', 'c':
-		switch pstr[1] {
-		case '1':
-			return C1, nil
-		case '2':
-			return C2, nil
-		case '3':
-			return C3, nil
-		case '4':
-			return C4, nil
-		case '5':
-			return C5, nil
-		case '6':
-			return C6, nil
-		case '7':
-			return C7, nil
-		case '8':
-			return C8, nil
-		}
-	case 'D', 'd':
-		switch pstr[1] {
-		case '1':
-			return D1, nil
-		case '2':
-			return D2, nil
-		case '3':
-			return D3, nil
-		case '4':
-			return D4, nil
-		case '5':
-			return D5, nil
-		case '6':
-			return D6, nil
-		case '7':
-			return D7, nil
-		case '8':
-			return D8, nil
-		}
-	case 'E', 'e':
-		switch pstr[1] {
-		case '1':
-			return E1, nil
-		case '2':
-			return E2, nil
-		case '3':
-			return E3, nil
-		case '4':
-			return E4, nil
-		case '5':
-			return E5, nil
-		case '6':
-			return E6, nil
-		case '7':
-			return E7, nil
-		case '8':
-			return E8, nil
-		}
-	case 'F', 'f':
-		switch pstr[1] {
-		case '1':
-			return F1, nil
-		case '2':
-			return F2, nil
-		case '3':
-			return F3, nil
-		case '4':
-			return F4, nil
-		case '5':
-			return F5, nil
-		case '6':
-			return F6, nil
-		case '7':
-			return F7, nil
-		case '8':
-			return F8, nil
-		}
-	case 'G', 'g':
-		switch pstr[1] {
-		case '1':
-			return G1, nil
-		case '2':
-			return G2, nil
-		case '3':
-			return G3, nil
-		case '4':
-			return G4, nil
-		case '5':
-			return G5, nil
-		case '6':
-			return G6, nil
-		case '7':
-			return G7, nil
-		case '8':
-			return G8, nil
-		}
-	case 'H', 'h':
-		switch pstr[1] {
-		case '1':
-			return H1, nil
-		case '2':
-			return H2, nil
-		case '3':
-			return H3, nil
-		case '4':
-			return H4, nil
-		case '5':
-			return H5, nil
-		case '6':
-			return H6, nil
-		case '7':
-			return H7, nil
-		case '8':
-			return H8, nil
-		}
+	p, ok := parsePosition(pstr)
+	if !ok {
+		return 0, fmt.Errorf("pgn: invalid position string: %s", pstr)
 	}
-	return NoPosition, fmt.Errorf("pgn: invalid position string: %s", pstr)
+	return p, nil
+}
+
+func parsePosition(pstr string) (Position, bool) {
+	if len(pstr) != 2 {
+		return 0, false
+	}
+
+	file := File(pstr[0])
+	switch file {
+	case 'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h':
+	case 'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H':
+		file += 'a' - 'A' // lowercase
+	default:
+		return 0, false
+	}
+
+	rank := Rank(pstr[1])
+	switch rank {
+	case '1', '2', '3', '4', '5', '6', '7', '8':
+	default:
+		return 0, false
+	}
+
+	p := PositionFromFileRank(file, rank)
+
+	return p, true
 }
 
 func (p Position) String() string {

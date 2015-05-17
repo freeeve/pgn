@@ -83,3 +83,15 @@ func (s *PositionSuite) TestGetNoFile(c *C) {
 func (s *PositionSuite) TestPositionString(c *C) {
 	c.Assert(A1.String(), Equals, "a1")
 }
+
+func (s *PositionSuite) TestParsePosition(c *C) {
+	p, err := ParsePosition("c3")
+	c.Assert(err, IsNil)
+	c.Assert(p, Equals, C3)
+}
+
+func (s *PositionSuite) TestParsePosition_uppercase(c *C) {
+	p, err := ParsePosition("H8")
+	c.Assert(err, IsNil)
+	c.Assert(p, Equals, H8)
+}
