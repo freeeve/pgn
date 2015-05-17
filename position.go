@@ -263,7 +263,9 @@ func (p Position) String() string {
 	if NoPosition == p {
 		return "-"
 	}
-	return fmt.Sprintf("%c%c", p.GetFile(), p.GetRank())
+	f := byte(p.GetFile())
+	r := byte(p.GetRank())
+	return string([]byte{f, r})
 }
 
 func (p Position) GetRank() Rank {
@@ -289,7 +291,7 @@ func (p Position) GetRank() Rank {
 }
 
 func (p Position) GetFile() File {
-	switch uint64(p) % 255 {
+	switch p % 255 {
 	case 1 << 7:
 		return FileH
 	case 1 << 6:
@@ -310,11 +312,12 @@ func (p Position) GetFile() File {
 	return NoFile
 }
 
-func PositionFromFileRank(f File, r Rank) (p Position) {
-	pos, err := ParsePosition(fmt.Sprintf("%c%c", f, r))
-	if err != nil {
-		//fmt.Println(err)
+func PositionFromFileRank(f File, r Rank) Position {
+	// shift ['a'..'h'] and ['1'..'8'] to [0..7]
+	f -= FileA
+	r -= Rank1
+	if f > 7 || r > 7 {
 		return NoPosition
 	}
-	return pos
+	return Position(1) << (uint(r*8) + uint(f))
 }
