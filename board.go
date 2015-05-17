@@ -101,33 +101,28 @@ const (
 )
 
 func (cs CastleStatus) String(c Color) string {
-	ret := ""
-	switch cs {
-	case Both:
-		switch c {
-		case Black:
-			ret = "kq"
-		case White:
-			ret = "KQ"
-		}
-	case None:
-		return "-"
-	case Kingside:
-		switch c {
-		case Black:
-			ret = "k"
-		case White:
-			ret = "K"
-		}
-	case Queenside:
-		switch c {
-		case Black:
-			ret = "q"
-		case White:
-			ret = "Q"
-		}
+	type p struct {
+		CastleStatus
+		Color
 	}
-	return ret
+	switch (p{cs, c}) {
+	case p{Both, Black}:
+		return "kq"
+	case p{Both, White}:
+		return "KQ"
+	case p{Kingside, Black}:
+		return "k"
+	case p{Kingside, White}:
+		return "K"
+	case p{Queenside, Black}:
+		return "q"
+	case p{Queenside, White}:
+		return "Q"
+	}
+	if cs == None {
+		return "-"
+	}
+	return ""
 }
 
 func (b *Board) MakeCoordMove(str string) error {
