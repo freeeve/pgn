@@ -5,100 +5,100 @@ import "fmt"
 type Rank byte
 
 const (
-	NoRank Rank = '0'
-	Rank1  Rank = '1'
-	Rank2  Rank = '2'
-	Rank3  Rank = '3'
-	Rank4  Rank = '4'
-	Rank5  Rank = '5'
-	Rank6  Rank = '6'
-	Rank7  Rank = '7'
-	Rank8  Rank = '8'
+	NoRank Rank = '0' + iota
+	Rank1
+	Rank2
+	Rank3
+	Rank4
+	Rank5
+	Rank6
+	Rank7
+	Rank8
 )
 
 type File byte
 
 const (
+	FileA File = 'a' + iota
+	FileB
+	FileC
+	FileD
+	FileE
+	FileF
+	FileG
+	FileH
 	NoFile File = ' '
-	FileA  File = 'a'
-	FileB  File = 'b'
-	FileC  File = 'c'
-	FileD  File = 'd'
-	FileE  File = 'e'
-	FileF  File = 'f'
-	FileG  File = 'g'
-	FileH  File = 'h'
 )
 
 type Position uint64
 
-const NoPosition Position = 0
-
 const (
 	A1 Position = 1 << iota
-	B1 Position = 1 << iota
-	C1 Position = 1 << iota
-	D1 Position = 1 << iota
-	E1 Position = 1 << iota
-	F1 Position = 1 << iota
-	G1 Position = 1 << iota
-	H1 Position = 1 << iota
-	A2 Position = 1 << iota
-	B2 Position = 1 << iota
-	C2 Position = 1 << iota
-	D2 Position = 1 << iota
-	E2 Position = 1 << iota
-	F2 Position = 1 << iota
-	G2 Position = 1 << iota
-	H2 Position = 1 << iota
-	A3 Position = 1 << iota
-	B3 Position = 1 << iota
-	C3 Position = 1 << iota
-	D3 Position = 1 << iota
-	E3 Position = 1 << iota
-	F3 Position = 1 << iota
-	G3 Position = 1 << iota
-	H3 Position = 1 << iota
-	A4 Position = 1 << iota
-	B4 Position = 1 << iota
-	C4 Position = 1 << iota
-	D4 Position = 1 << iota
-	E4 Position = 1 << iota
-	F4 Position = 1 << iota
-	G4 Position = 1 << iota
-	H4 Position = 1 << iota
-	A5 Position = 1 << iota
-	B5 Position = 1 << iota
-	C5 Position = 1 << iota
-	D5 Position = 1 << iota
-	E5 Position = 1 << iota
-	F5 Position = 1 << iota
-	G5 Position = 1 << iota
-	H5 Position = 1 << iota
-	A6 Position = 1 << iota
-	B6 Position = 1 << iota
-	C6 Position = 1 << iota
-	D6 Position = 1 << iota
-	E6 Position = 1 << iota
-	F6 Position = 1 << iota
-	G6 Position = 1 << iota
-	H6 Position = 1 << iota
-	A7 Position = 1 << iota
-	B7 Position = 1 << iota
-	C7 Position = 1 << iota
-	D7 Position = 1 << iota
-	E7 Position = 1 << iota
-	F7 Position = 1 << iota
-	G7 Position = 1 << iota
-	H7 Position = 1 << iota
-	A8 Position = 1 << iota
-	B8 Position = 1 << iota
-	C8 Position = 1 << iota
-	D8 Position = 1 << iota
-	E8 Position = 1 << iota
-	F8 Position = 1 << iota
-	G8 Position = 1 << iota
-	H8 Position = 1 << iota
+	B1
+	C1
+	D1
+	E1
+	F1
+	G1
+	H1
+	A2
+	B2
+	C2
+	D2
+	E2
+	F2
+	G2
+	H2
+	A3
+	B3
+	C3
+	D3
+	E3
+	F3
+	G3
+	H3
+	A4
+	B4
+	C4
+	D4
+	E4
+	F4
+	G4
+	H4
+	A5
+	B5
+	C5
+	D5
+	E5
+	F5
+	G5
+	H5
+	A6
+	B6
+	C6
+	D6
+	E6
+	F6
+	G6
+	H6
+	A7
+	B7
+	C7
+	D7
+	E7
+	F7
+	G7
+	H7
+	A8
+	B8
+	C8
+	D8
+	E8
+	F8
+	G8
+	H8
+
+	NoPosition Position = 0
 )
 
 func ParsePosition(pstr string) (Position, error) {
