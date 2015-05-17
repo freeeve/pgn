@@ -6,6 +6,7 @@ import (
 	"strings"
 	"testing"
 	"text/scanner"
+
 	. "gopkg.in/check.v1"
 )
 
