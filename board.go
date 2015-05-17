@@ -9,15 +9,15 @@ import (
 )
 
 var (
-	ErrAmbiguousMove       error = errors.New("pgn: ambiguous algebraic move")
-	ErrUnknownMove         error = errors.New("pgn: unknown move")
-	ErrAttackerNotFound    error = errors.New("pgn: attacker not found")
-	ErrMoveFromEmptySquare error = errors.New("pgn: move from empty square")
-	ErrMoveWrongColor      error = errors.New("pgn: move from wrong color")
-	ErrMoveThroughPiece    error = errors.New("pgn: move through piece")
-	ErrMoveThroughCheck    error = errors.New("pgn: move through check")
-	ErrMoveIntoCheck       error = errors.New("pgn: move into check")
-	ErrMoveInvalidCastle   error = errors.New("pgn: move invalid castle")
+	ErrAmbiguousMove       = errors.New("pgn: ambiguous algebraic move")
+	ErrUnknownMove         = errors.New("pgn: unknown move")
+	ErrAttackerNotFound    = errors.New("pgn: attacker not found")
+	ErrMoveFromEmptySquare = errors.New("pgn: move from empty square")
+	ErrMoveWrongColor      = errors.New("pgn: move from wrong color")
+	ErrMoveThroughPiece    = errors.New("pgn: move through piece")
+	ErrMoveThroughCheck    = errors.New("pgn: move through check")
+	ErrMoveIntoCheck       = errors.New("pgn: move into check")
+	ErrMoveInvalidCastle   = errors.New("pgn: move invalid castle")
 )
 
 type Board struct {
