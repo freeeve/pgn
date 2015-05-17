@@ -1,12 +1,12 @@
 pgn
 ===
 
-a pgn parser for golang (still in development; attempting to stabilize API soon--feedback welcome)
+A pgn parser for golang. This is release v1.
 
 [![Build Status](https://travis-ci.org/wfreeman/pgn.png?branch=master)](https://travis-ci.org/wfreeman/pgn)
 [![Coverage Status](https://coveralls.io/repos/wfreeman/pgn/badge.png?branch=master)](https://coveralls.io/r/wfreeman/pgn?branch=master)
 
-Normal go install... `go get github.com/wfreeman/pgn`
+Normal go install... `go get gopkg.in/wfreeman/pgn.v1`
 
 ## minimum viable snippet
 
@@ -18,7 +18,7 @@ import (
 	"log"
 	"os"
 
-	"github.com/wfreeman/pgn"
+	"gopkg.in/wfreeman/pgn.v1"
 )
 
 func main() {
