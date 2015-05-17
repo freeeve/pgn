@@ -527,62 +527,49 @@ func (b *Board) MakeMove(m Move) error {
 	return nil
 }
 
-func (b *Board) RemovePiece(pos Position, p Piece) {
+// refPiece returns a pointer to the Board field corresponding to p
+// fallback just simplifies code to avoid nil checking
+// (a dummy value will be passed in if p is invalid)
+func (b *Board) refPiece(p Piece, fallback *uint64) *uint64 {
 	switch p {
 	case WhitePawn:
-		b.wPawns &= ^uint64(pos)
+		return &b.wPawns
 	case BlackPawn:
-		b.bPawns &= ^uint64(pos)
+		return &b.bPawns
 	case WhiteKnight:
-		b.wKnights &= ^uint64(pos)
+		return &b.wKnights
 	case BlackKnight:
-		b.bKnights &= ^uint64(pos)
+		return &b.bKnights
 	case WhiteBishop:
-		b.wBishops &= ^uint64(pos)
+		return &b.wBishops
 	case BlackBishop:
-		b.bBishops &= ^uint64(pos)
+		return &b.bBishops
 	case WhiteRook:
-		b.wRooks &= ^uint64(pos)
+		return &b.wRooks
 	case BlackRook:
-		b.bRooks &= ^uint64(pos)
+		return &b.bRooks
 	case WhiteQueen:
-		b.wQueens &= ^uint64(pos)
+		return &b.wQueens
 	case BlackQueen:
-		b.bQueens &= ^uint64(pos)
+		return &b.bQueens
 	case WhiteKing:
-		b.wKings &= ^uint64(pos)
+		return &b.wKings
 	case BlackKing:
-		b.bKings &= ^uint64(pos)
+		return &b.bKings
 	}
+	return fallback
+}
+
+func (b *Board) RemovePiece(pos Position, p Piece) {
+	npos := ^uint64(pos) // negation of pos
+	pp := b.refPiece(p, &npos)
+	*pp &= npos
 }
 
 func (b *Board) SetPiece(pos Position, p Piece) {
-	switch p {
-	case WhitePawn:
-		b.wPawns |= uint64(pos)
-	case BlackPawn:
-		b.bPawns |= uint64(pos)
-	case WhiteKnight:
-		b.wKnights |= uint64(pos)
-	case BlackKnight:
-		b.bKnights |= uint64(pos)
-	case WhiteBishop:
-		b.wBishops |= uint64(pos)
-	case BlackBishop:
-		b.bBishops |= uint64(pos)
-	case WhiteRook:
-		b.wRooks |= uint64(pos)
-	case BlackRook:
-		b.bRooks |= uint64(pos)
-	case WhiteQueen:
-		b.wQueens |= uint64(pos)
-	case BlackQueen:
-		b.bQueens |= uint64(pos)
-	case WhiteKing:
-		b.wKings |= uint64(pos)
-	case BlackKing:
-		b.bKings |= uint64(pos)
-	}
+	cpos := uint64(pos) // (nominative) conversion of pos
+	pp := b.refPiece(p, &cpos)
+	*pp |= cpos
 }
 
 func (b Board) GetPiece(p Position) Piece {
