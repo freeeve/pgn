@@ -1153,10 +1153,8 @@ func (b Board) FindKing(color Color) Position {
 		for f := FileA; f <= FileH; f++ {
 			pos := PositionFromFileRank(f, r)
 			p := b.GetPiece(pos)
-			if p == BlackKing || p == WhiteKing {
-				if p.Color() == color {
-					return pos
-				}
+			if (p == BlackKing || p == WhiteKing) && p.Color() == color {
+				return pos
 			}
 		}
 	}
