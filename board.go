@@ -60,10 +60,10 @@ const (
 )
 
 func (p Piece) Color() Color {
-	if byte(p) >= byte('a') && byte(p) <= byte('z') {
+	if 'a' <= p && p <= 'z' {
 		return Black
 	}
-	if byte(p) >= byte('A') && byte(p) <= byte('Z') {
+	if 'A' <= p && p <= 'Z' {
 		return White
 	}
 	return NoColor
