@@ -1,10 +1,11 @@
 pgn
 ===
 
-A pgn parser for golang. This is release v1.
+A pgn parser for golang. This is v2, still in development--DO NOT USE until API
+is stable.
 
-[![Build Status](https://travis-ci.org/wfreeman/pgn.png?branch=master)](https://travis-ci.org/wfreeman/pgn)
-[![Coverage Status](https://coveralls.io/repos/wfreeman/pgn/badge.png?branch=master)](https://coveralls.io/r/wfreeman/pgn?branch=master)
+[![Build Status](https://travis-ci.org/wfreeman/pgn.png?branch=v2)](https://travis-ci.org/wfreeman/pgn)
+[![Coverage Status](https://coveralls.io/repos/wfreeman/pgn/badge.png?branch=v2)](https://coveralls.io/r/wfreeman/pgn?branch=v2)
 
 Normal go install... `go get gopkg.in/wfreeman/pgn.v1`
 
@@ -18,7 +19,7 @@ import (
 	"log"
 	"os"
 
-	"gopkg.in/wfreeman/pgn.v1"
+	"gopkg.in/wfreeman/pgn.v2"
 )
 
 func main() {
