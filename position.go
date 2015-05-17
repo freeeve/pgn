@@ -145,25 +145,27 @@ func (p Position) String() string {
 }
 
 func (p Position) GetRank() Rank {
-	if uint64(p) <= uint64(NoPosition) {
+	switch {
+	case p == NoPosition:
 		return NoRank
-	} else if uint64(p) <= uint64(H1) {
+	case p <= H1:
 		return Rank1
-	} else if uint64(p) <= uint64(H2) {
+	case p <= H2:
 		return Rank2
-	} else if uint64(p) <= uint64(H3) {
+	case p <= H3:
 		return Rank3
-	} else if uint64(p) <= uint64(H4) {
+	case p <= H4:
 		return Rank4
-	} else if uint64(p) <= uint64(H5) {
+	case p <= H5:
 		return Rank5
-	} else if uint64(p) <= uint64(H6) {
+	case p <= H6:
 		return Rank6
-	} else if uint64(p) <= uint64(H7) {
+	case p <= H7:
 		return Rank7
-	} else {
+	case p <= H8:
 		return Rank8
 	}
+	panic("unreachable")
 }
 
 func (p Position) GetFile() File {
