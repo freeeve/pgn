@@ -168,3 +168,18 @@ Bf6 24. Ndb1 d2 25. Qc2 Bb3 26. Qxf5 d1=Q 27. Nxd1 Bxd1
 	c.Assert(game.Tags["Site"], Equals, "New York (USA)")
 	c.Assert(len(game.Moves), Equals, 58)
 }
+
+func (s *PGNSuite) BenchmarkParse(c *C) {
+	c.SetBytes(int64(len(simple)))
+	r0 := strings.NewReader(simple)
+
+	for i := 0; i < c.N; i++ {
+		c.StopTimer()
+		r := *r0
+		sc := scanner.Scanner{}
+		sc.Init(&r)
+
+		c.StartTimer()
+		ParseGame(&sc)
+	}
+}
