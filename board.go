@@ -9,15 +9,15 @@ import (
 )
 
 var (
-	ErrAmbiguousMove       error = errors.New("pgn: ambiguous algebraic move")
-	ErrUnknownMove         error = errors.New("pgn: unknown move")
-	ErrAttackerNotFound    error = errors.New("pgn: attacker not found")
-	ErrMoveFromEmptySquare error = errors.New("pgn: move from empty square")
-	ErrMoveWrongColor      error = errors.New("pgn: move from wrong color")
-	ErrMoveThroughPiece    error = errors.New("pgn: move through piece")
-	ErrMoveThroughCheck    error = errors.New("pgn: move through check")
-	ErrMoveIntoCheck       error = errors.New("pgn: move into check")
-	ErrMoveInvalidCastle   error = errors.New("pgn: move invalid castle")
+	ErrAmbiguousMove       = errors.New("pgn: ambiguous algebraic move")
+	ErrUnknownMove         = errors.New("pgn: unknown move")
+	ErrAttackerNotFound    = errors.New("pgn: attacker not found")
+	ErrMoveFromEmptySquare = errors.New("pgn: move from empty square")
+	ErrMoveWrongColor      = errors.New("pgn: move from wrong color")
+	ErrMoveThroughPiece    = errors.New("pgn: move through piece")
+	ErrMoveThroughCheck    = errors.New("pgn: move through check")
+	ErrMoveIntoCheck       = errors.New("pgn: move into check")
+	ErrMoveInvalidCastle   = errors.New("pgn: move invalid castle")
 )
 
 type Board struct {
@@ -60,10 +60,10 @@ const (
 )
 
 func (p Piece) Color() Color {
-	if byte(p) >= byte('a') && byte(p) <= byte('z') {
+	if 'a' <= p && p <= 'z' {
 		return Black
 	}
-	if byte(p) >= byte('A') && byte(p) <= byte('Z') {
+	if 'A' <= p && p <= 'Z' {
 		return White
 	}
 	return NoColor
@@ -101,33 +101,28 @@ const (
 )
 
 func (cs CastleStatus) String(c Color) string {
-	ret := ""
-	switch cs {
-	case Both:
-		switch c {
-		case Black:
-			ret = "kq"
-		case White:
-			ret = "KQ"
-		}
-	case None:
-		return "-"
-	case Kingside:
-		switch c {
-		case Black:
-			ret = "k"
-		case White:
-			ret = "K"
-		}
-	case Queenside:
-		switch c {
-		case Black:
-			ret = "q"
-		case White:
-			ret = "Q"
-		}
+	type p struct {
+		CastleStatus
+		Color
 	}
-	return ret
+	switch (p{cs, c}) {
+	case p{Both, Black}:
+		return "kq"
+	case p{Both, White}:
+		return "KQ"
+	case p{Kingside, Black}:
+		return "k"
+	case p{Kingside, White}:
+		return "K"
+	case p{Queenside, Black}:
+		return "q"
+	case p{Queenside, White}:
+		return "Q"
+	}
+	if cs == None {
+		return "-"
+	}
+	return ""
 }
 
 func (b *Board) MakeCoordMove(str string) error {
@@ -527,99 +522,77 @@ func (b *Board) MakeMove(m Move) error {
 	return nil
 }
 
-func (b *Board) RemovePiece(pos Position, p Piece) {
+// refPiece returns a pointer to the Board field corresponding to p
+// fallback just simplifies code to avoid nil checking
+// (a dummy value will be passed in if p is invalid)
+func (b *Board) refPiece(p Piece, fallback *uint64) *uint64 {
 	switch p {
 	case WhitePawn:
-		b.wPawns &= ^uint64(pos)
+		return &b.wPawns
 	case BlackPawn:
-		b.bPawns &= ^uint64(pos)
+		return &b.bPawns
 	case WhiteKnight:
-		b.wKnights &= ^uint64(pos)
+		return &b.wKnights
 	case BlackKnight:
-		b.bKnights &= ^uint64(pos)
+		return &b.bKnights
 	case WhiteBishop:
-		b.wBishops &= ^uint64(pos)
+		return &b.wBishops
 	case BlackBishop:
-		b.bBishops &= ^uint64(pos)
+		return &b.bBishops
 	case WhiteRook:
-		b.wRooks &= ^uint64(pos)
+		return &b.wRooks
 	case BlackRook:
-		b.bRooks &= ^uint64(pos)
+		return &b.bRooks
 	case WhiteQueen:
-		b.wQueens &= ^uint64(pos)
+		return &b.wQueens
 	case BlackQueen:
-		b.bQueens &= ^uint64(pos)
+		return &b.bQueens
 	case WhiteKing:
-		b.wKings &= ^uint64(pos)
+		return &b.wKings
 	case BlackKing:
-		b.bKings &= ^uint64(pos)
+		return &b.bKings
 	}
+	return fallback
+}
+
+func (b *Board) RemovePiece(pos Position, p Piece) {
+	npos := ^uint64(pos) // negation of pos
+	pp := b.refPiece(p, &npos)
+	*pp &= npos
 }
 
 func (b *Board) SetPiece(pos Position, p Piece) {
-	switch p {
-	case WhitePawn:
-		b.wPawns |= uint64(pos)
-	case BlackPawn:
-		b.bPawns |= uint64(pos)
-	case WhiteKnight:
-		b.wKnights |= uint64(pos)
-	case BlackKnight:
-		b.bKnights |= uint64(pos)
-	case WhiteBishop:
-		b.wBishops |= uint64(pos)
-	case BlackBishop:
-		b.bBishops |= uint64(pos)
-	case WhiteRook:
-		b.wRooks |= uint64(pos)
-	case BlackRook:
-		b.bRooks |= uint64(pos)
-	case WhiteQueen:
-		b.wQueens |= uint64(pos)
-	case BlackQueen:
-		b.bQueens |= uint64(pos)
-	case WhiteKing:
-		b.wKings |= uint64(pos)
-	case BlackKing:
-		b.bKings |= uint64(pos)
-	}
+	cpos := uint64(pos) // (nominative) conversion of pos
+	pp := b.refPiece(p, &cpos)
+	*pp |= cpos
 }
 
 func (b Board) GetPiece(p Position) Piece {
-	if b.bPawns&uint64(p) != 0 {
+	q := uint64(p)
+	switch {
+	case q&b.bPawns != 0:
 		return BlackPawn
-	}
-	if b.wPawns&uint64(p) != 0 {
+	case q&b.wPawns != 0:
 		return WhitePawn
-	}
-	if b.bKnights&uint64(p) != 0 {
+	case q&b.bKnights != 0:
 		return BlackKnight
-	}
-	if b.wKnights&uint64(p) != 0 {
+	case q&b.wKnights != 0:
 		return WhiteKnight
-	}
-	if b.bBishops&uint64(p) != 0 {
+	case q&b.bBishops != 0:
 		return BlackBishop
-	}
-	if b.wBishops&uint64(p) != 0 {
+	case q&b.wBishops != 0:
 		return WhiteBishop
-	}
-	if b.bRooks&uint64(p) != 0 {
+	case q&b.bRooks != 0:
 		return BlackRook
-	}
-	if b.wRooks&uint64(p) != 0 {
+	case q&b.wRooks != 0:
 		return WhiteRook
-	}
-	if b.bQueens&uint64(p) != 0 {
+	case q&b.bQueens != 0:
 		return BlackQueen
-	}
-	if b.wQueens&uint64(p) != 0 {
+	case q&b.wQueens != 0:
 		return WhiteQueen
-	}
-	if b.bKings&uint64(p) != 0 {
+	case q&b.bKings != 0:
 		return BlackKing
-	}
-	if b.wKings&uint64(p) != 0 {
+	case q&b.wKings != 0:
 		return WhiteKing
 	}
 	return NoPiece
@@ -1153,10 +1126,8 @@ func (b Board) FindKing(color Color) Position {
 		for f := FileA; f <= FileH; f++ {
 			pos := PositionFromFileRank(f, r)
 			p := b.GetPiece(pos)
-			if p == BlackKing || p == WhiteKing {
-				if p.Color() == color {
-					return pos
-				}
+			if (p == BlackKing || p == WhiteKing) && p.Color() == color {
+				return pos
 			}
 		}
 	}
