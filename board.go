@@ -573,40 +573,31 @@ func (b *Board) SetPiece(pos Position, p Piece) {
 }
 
 func (b Board) GetPiece(p Position) Piece {
-	if b.bPawns&uint64(p) != 0 {
+	q := uint64(p)
+	switch {
+	case q&b.bPawns != 0:
 		return BlackPawn
-	}
-	if b.wPawns&uint64(p) != 0 {
+	case q&b.wPawns != 0:
 		return WhitePawn
-	}
-	if b.bKnights&uint64(p) != 0 {
+	case q&b.bKnights != 0:
 		return BlackKnight
-	}
-	if b.wKnights&uint64(p) != 0 {
+	case q&b.wKnights != 0:
 		return WhiteKnight
-	}
-	if b.bBishops&uint64(p) != 0 {
+	case q&b.bBishops != 0:
 		return BlackBishop
-	}
-	if b.wBishops&uint64(p) != 0 {
+	case q&b.wBishops != 0:
 		return WhiteBishop
-	}
-	if b.bRooks&uint64(p) != 0 {
+	case q&b.bRooks != 0:
 		return BlackRook
-	}
-	if b.wRooks&uint64(p) != 0 {
+	case q&b.wRooks != 0:
 		return WhiteRook
-	}
-	if b.bQueens&uint64(p) != 0 {
+	case q&b.bQueens != 0:
 		return BlackQueen
-	}
-	if b.wQueens&uint64(p) != 0 {
+	case q&b.wQueens != 0:
 		return WhiteQueen
-	}
-	if b.bKings&uint64(p) != 0 {
+	case q&b.bKings != 0:
 		return BlackKing
-	}
-	if b.wKings&uint64(p) != 0 {
+	case q&b.wKings != 0:
 		return WhiteKing
 	}
 	return NoPiece
