@@ -170,7 +170,6 @@ func (s *PGNSuite) BenchmarkParse(c *C) {
 
 	for i := 0; i < c.N; i++ {
 		c.StopTimer()
-		//r := *r0
 		ps := NewPGNScanner(r0)
 		c.StartTimer()
 		ps.ParseGame()

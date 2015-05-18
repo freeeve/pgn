@@ -81,7 +81,7 @@ func (tokenizer *PGNTokenizer) tokenize() error {
 			} else if next == '\n' || next == '\r' {
 				// ignore
 			} else {
-				buf.WriteString(string(next))
+				buf.WriteRune(next)
 			}
 		} else if inTag {
 			switch next {
@@ -90,12 +90,12 @@ func (tokenizer *PGNTokenizer) tokenize() error {
 				buf.Reset()
 				inTag = false
 			default:
-				buf.WriteString(string(next))
+				buf.WriteRune(next)
 			}
 		} else {
 			switch next {
 			case '.':
-				buf.WriteString(string(next))
+				buf.WriteRune(next)
 				if !tokenizer.onlyTags {
 					tokenizer.ch <- token{moveNumberToken, buf.String()}
 				}
@@ -118,7 +118,7 @@ func (tokenizer *PGNTokenizer) tokenize() error {
 				inComment = true
 				buf.Reset()
 			default:
-				buf.WriteString(string(next))
+				buf.WriteRune(next)
 			}
 		}
 	}
