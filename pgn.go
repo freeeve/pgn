@@ -1,14 +1,27 @@
 package pgn
 
+// import "gopkg.in/wfreeman/pgn.v2"
+
 import (
+	"bufio"
+	"bytes"
+	"errors"
 	"fmt"
 	"io"
 	"strings"
-	"text/scanner"
 )
 
 type PGNScanner struct {
-	s scanner.Scanner
+	ch        chan token
+	done      bool
+	tokenizer *PGNTokenizer
+}
+
+type PGNTokenizer struct {
+	ch       chan token
+	r        io.Reader
+	done     bool
+	onlyTags bool
 }
 
 type Game struct {
@@ -24,223 +37,173 @@ type Move struct {
 
 func (m Move) String() string {
 	if m.Promote == NoPiece {
-		return fmt.Sprintf("%v%v", m.From, m.To)
+		return string([]byte{byte(m.From), byte(m.To)})
 	}
-	return fmt.Sprintf("%v%v%v", m.From, m.To, m.Promote)
+	return string([]byte{byte(m.From), byte(m.To), byte(m.Promote)})
 }
 
 var (
 	NilMove Move = Move{From: NoPosition, To: NoPosition}
 )
 
-func ParseGame(s *scanner.Scanner) (*Game, error) {
-	g := Game{Tags: map[string]string{}, Moves: []Move{}}
-	err := ParseTags(s, &g)
-	if err != nil {
-		return nil, err
-	}
-	err = ParseMoves(s, &g)
-	if err != nil {
-		return nil, err
-	}
-	return &g, nil
+type tokenType uint8
+
+const (
+	tagToken tokenType = iota
+	moveNumberToken
+	moveToken
+	commentToken
+	resultToken
+)
+
+type token struct {
+	tokenType
+	token string
 }
 
-func ParseTags(s *scanner.Scanner, g *Game) error {
-	//fmt.Println("starting tags parse")
-	run := s.Peek()
-	for run != scanner.EOF {
-		switch run {
-		case '[', ']', '\n', '\r':
-			run = s.Next()
-		case '1':
-			return nil
-		default:
-			s.Scan()
-			tag := s.TokenText()
-			s.Scan()
-			val := s.TokenText()
-			//fmt.Println("tag:", tag, "; val:", val)
-			g.Tags[tag] = strings.Trim(val, "\"")
-		}
-		run = s.Peek()
-	}
-	return nil
-}
-
-func isEnd(str string) bool {
-	if str == "1/2-1/2" {
-		return true
-	}
-	if str == "0-1" {
-		return true
-	}
-	if str == "1-0" {
-		return true
-	}
-	return false
-}
-
-func ParseMoves(s *scanner.Scanner, g *Game) error {
-	//fmt.Println("starting moves parse")
-	s.Mode = scanner.ScanIdents | scanner.ScanChars | scanner.ScanInts | scanner.ScanStrings
-	run := s.Peek()
-	board := NewBoard()
-	var err error
-	if len(g.Tags["FEN"]) > 0 {
-		board, err = NewBoardFEN(g.Tags["FEN"])
+func (tokenizer *PGNTokenizer) tokenize() error {
+	br := bufio.NewReader(tokenizer.r)
+	var buf bytes.Buffer
+	inComment := false
+	inTag := false
+	for {
+		next, _, err := br.ReadRune()
 		if err != nil {
+			tokenizer.done = true
+			close(tokenizer.ch)
 			return err
 		}
-	}
-	num := ""
-	white := ""
-	black := ""
-	for run != scanner.EOF {
-		switch run {
-		case '(':
-			for run != ')' && run != scanner.EOF {
-				run = s.Next()
+		if inComment {
+			if next == '}' {
+				tokenizer.ch <- token{commentToken, buf.String()}
+				inComment = false
+				buf.Reset()
+			} else if next == '\n' || next == '\r' {
+				// ignore
+			} else {
+				buf.WriteString(string(next))
 			}
-		case '{':
-			for run != '}' && run != scanner.EOF {
-				run = s.Next()
+		} else if inTag {
+			switch next {
+			case ']':
+				tokenizer.ch <- token{tagToken, buf.String()}
+				buf.Reset()
+				inTag = false
+			default:
+				buf.WriteString(string(next))
 			}
-		case '#', '.', '+', '!', '?', '\n', '\r':
-			run = s.Next()
-			run = s.Peek()
-		default:
-			s.Scan()
-			if s.TokenText() == "{" {
-				run = '{'
-				continue
+		} else {
+			switch next {
+			case '.':
+				buf.WriteString(string(next))
+				if !tokenizer.onlyTags {
+					tokenizer.ch <- token{moveNumberToken, buf.String()}
+				}
+				buf.Reset()
+			case '[':
+				inTag = true
+			case ' ', '\t', '\n', '\r':
+				if strings.TrimSpace(buf.String()) != "" {
+					if !tokenizer.onlyTags || (tokenizer.onlyTags && inTag) {
+						switch strings.TrimSpace(buf.String()) {
+						case "1-0", "0-1", "*", "1/2-1/2":
+							tokenizer.ch <- token{resultToken, buf.String()}
+						default:
+							tokenizer.ch <- token{moveToken, buf.String()}
+						}
+					}
+				}
+				buf.Reset()
+			case '{':
+				inComment = true
+				buf.Reset()
+			default:
+				buf.WriteString(string(next))
 			}
-			if num == "" {
-				num = s.TokenText()
-				for s.Peek() == '-' {
-					s.Scan()
-					num += s.TokenText()
-					s.Scan()
-					num += s.TokenText()
-				}
-				for s.Peek() == '/' {
-					s.Scan()
-					num += s.TokenText()
-					s.Scan()
-					num += s.TokenText()
-					s.Scan()
-					num += s.TokenText()
-					s.Scan()
-					num += s.TokenText()
-					s.Scan()
-					num += s.TokenText()
-					s.Scan()
-					num += s.TokenText()
-				}
-				if isEnd(num) {
-					return nil
-				}
-			} else if white == "" {
-				white = s.TokenText()
-				for s.Peek() == '-' {
-					s.Scan()
-					white += s.TokenText()
-					s.Scan()
-					white += s.TokenText()
-				}
-				for s.Peek() == '/' {
-					s.Scan()
-					white += s.TokenText()
-					s.Scan()
-					white += s.TokenText()
-					s.Scan()
-					white += s.TokenText()
-					s.Scan()
-					white += s.TokenText()
-					s.Scan()
-					white += s.TokenText()
-					s.Scan()
-					white += s.TokenText()
-				}
-				if isEnd(white) {
-					return nil
-				}
-				if s.Peek() == '=' {
-					s.Scan()
-					white += s.TokenText()
-					s.Scan()
-					white += s.TokenText()
-				}
-				move, err := board.MoveFromAlgebraic(white, White)
-				if err != nil {
-					fmt.Println(board)
-					return err
-				}
-				g.Moves = append(g.Moves, move)
-				board.MakeMove(move)
-			} else if black == "" {
-				black = s.TokenText()
-				for s.Peek() == '-' {
-					s.Scan()
-					black += s.TokenText()
-					s.Scan()
-					black += s.TokenText()
-				}
-				for s.Peek() == '/' {
-					s.Scan()
-					black += s.TokenText()
-					s.Scan()
-					black += s.TokenText()
-					s.Scan()
-					black += s.TokenText()
-					s.Scan()
-					black += s.TokenText()
-					s.Scan()
-					black += s.TokenText()
-					s.Scan()
-					black += s.TokenText()
-				}
-				if isEnd(black) {
-					return nil
-				}
-				if s.Peek() == '=' {
-					s.Scan()
-					black += s.TokenText()
-					s.Scan()
-					black += s.TokenText()
-				}
-				move, err := board.MoveFromAlgebraic(black, Black)
-				if err != nil {
-					fmt.Println(board)
-					return err
-				}
-				g.Moves = append(g.Moves, move)
-				board.MakeMove(move)
-				num = ""
-				white = ""
-				black = ""
-			}
-			run = s.Peek()
 		}
 	}
+	close(tokenizer.ch)
 	return nil
+}
+
+func NewPGNTagScanner(r io.Reader) *PGNScanner {
+	return newPGNScanner(r, true)
 }
 
 func NewPGNScanner(r io.Reader) *PGNScanner {
-	s := scanner.Scanner{}
-	s.Init(r)
-	return &PGNScanner{s: s}
+	return newPGNScanner(r, false)
+}
+
+func newPGNScanner(r io.Reader, onlyTags bool) *PGNScanner {
+	tokens := make(chan token, 1024)
+	tokenizer := &PGNTokenizer{r: r, onlyTags: onlyTags, ch: tokens}
+	go tokenizer.tokenize()
+	return &PGNScanner{tokenizer: tokenizer, ch: tokens}
 }
 
 func (ps *PGNScanner) Next() bool {
-	if ps.s.Peek() == scanner.EOF {
+	if ps.done {
 		return false
 	}
 	return true
 }
 
+func (ps *PGNScanner) ParseGame() (*Game, error) {
+	g := Game{Tags: map[string]string{}, Moves: []Move{}}
+	var board *Board
+	var err error
+	//moves := false
+	var next = White
+	for v := range ps.ch {
+		switch v.tokenType {
+		case tagToken:
+			g.addTag(v.token)
+		case moveNumberToken:
+			if len(g.Moves) == 0 {
+				if len(g.Tags["FEN"]) > 0 {
+					board, err = NewBoardFEN(g.Tags["FEN"])
+					if err != nil {
+						return nil, err
+					}
+				} else {
+					board = NewBoard()
+				}
+			}
+		case moveToken:
+			move, err := board.MoveFromAlgebraic(v.token, next)
+			if err != nil {
+				fmt.Println(board, "[", v.token, "]")
+				return nil, err
+			}
+			g.Moves = append(g.Moves, move)
+			board.MakeMove(move)
+			if next == White {
+				next = Black
+			} else {
+				next = White
+			}
+		case commentToken:
+			// fmt.Println("this is a comment:", v)
+		case resultToken:
+			return &g, nil
+		}
+	}
+	if ps.tokenizer.done {
+		ps.done = true
+	}
+	return &g, nil
+}
+
+func (g *Game) addTag(tag string) error {
+	firstSpace := strings.Index(tag, " ")
+	if firstSpace == -1 {
+		return errors.New("pgn: unparseable tag")
+	}
+	g.Tags[tag[:firstSpace]] = strings.Trim(tag[firstSpace:], " \"")
+	return nil
+}
+
 func (ps *PGNScanner) Scan() (*Game, error) {
-	game, err := ParseGame(&ps.s)
-	//fmt.Println(game)
+	game, err := ps.ParseGame()
 	return game, err
 }
