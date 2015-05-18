@@ -166,10 +166,10 @@ Bf6 24. Ndb1 d2 25. Qc2 Bb3 26. Qxf5 d1=Q 27. Nxd1 Bxd1
 
 func (s *PGNSuite) BenchmarkParse(c *C) {
 	c.SetBytes(int64(len(simple)))
-	r0 := strings.NewReader(simple)
 
 	for i := 0; i < c.N; i++ {
 		c.StopTimer()
+		r0 := strings.NewReader(simple)
 		ps := NewPGNScanner(r0)
 		c.StartTimer()
 		ps.ParseGame()
