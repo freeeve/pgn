@@ -5,7 +5,6 @@ import (
 	"os"
 	"strings"
 	"testing"
-	"text/scanner"
 
 	. "gopkg.in/check.v1"
 )
@@ -38,9 +37,8 @@ var simple = `[Event "State Ch."]
 
 func (s *PGNSuite) TestParse(c *C) {
 	r := strings.NewReader(simple)
-	sc := scanner.Scanner{}
-	sc.Init(r)
-	game, err := ParseGame(&sc)
+	ps := NewPGNScanner(r)
+	game, err := ps.ParseGame()
 	if err != nil {
 		c.Fatal(err)
 	}
@@ -88,9 +86,8 @@ func (s *PGNSuite) TestPGNParseWithCheckmate(c *C) {
  31.Kxg2 Bxe5 32.Nxf7+ Kg7 33.Nxe5 Qxe3 34.Qe7+ Kh6 35.Nf7+ Kh5 36.Qh4# 1-0
 `
 	r := strings.NewReader(pgnstr)
-	sc := scanner.Scanner{}
-	sc.Init(r)
-	game, err := ParseGame(&sc)
+	ps := NewPGNScanner(r)
+	game, err := ps.ParseGame()
 	c.Assert(err, IsNil)
 	c.Assert(len(game.Moves), Equals, 71)
 }
@@ -120,9 +117,8 @@ func (s *PGNSuite) TestPGNParseInfiniteLoopF4(c *C) {
 72.Kb7 Rg7+ 73.Kb6  1-0`
 
 	r := strings.NewReader(pgnstr)
-	sc := scanner.Scanner{}
-	sc.Init(r)
-	game, err := ParseGame(&sc)
+	ps := NewPGNScanner(r)
+	game, err := ps.ParseGame()
 	c.Assert(err, IsNil)
 	//	fmt.Println(game)
 	c.Assert(game.Tags["Site"], Equals, "Leipzig")
@@ -160,9 +156,8 @@ Bf6 24. Ndb1 d2 25. Qc2 Bb3 26. Qxf5 d1=Q 27. Nxd1 Bxd1
 28. Nc3 e2 29. Raxd1 Qxc3 0-1`
 
 	r := strings.NewReader(pgnstr)
-	sc := scanner.Scanner{}
-	sc.Init(r)
-	game, err := ParseGame(&sc)
+	ps := NewPGNScanner(r)
+	game, err := ps.ParseGame()
 	c.Assert(err, Equals, nil)
 	c.Assert(game, NotNil)
 	c.Assert(game.Tags["Site"], Equals, "New York (USA)")
@@ -171,15 +166,12 @@ Bf6 24. Ndb1 d2 25. Qc2 Bb3 26. Qxf5 d1=Q 27. Nxd1 Bxd1
 
 func (s *PGNSuite) BenchmarkParse(c *C) {
 	c.SetBytes(int64(len(simple)))
-	r0 := strings.NewReader(simple)
 
 	for i := 0; i < c.N; i++ {
 		c.StopTimer()
-		r := *r0
-		sc := scanner.Scanner{}
-		sc.Init(&r)
-
+		r := strings.NewReader(simple)
+		ps := NewPGNScanner(r)
 		c.StartTimer()
-		ParseGame(&sc)
+		ps.ParseGame()
 	}
 }
