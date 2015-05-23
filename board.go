@@ -189,11 +189,11 @@ func (b *Board) MoveFromAlgebraic(str string, color Color) (Move, error) {
 	testPos := pos
 	if err == nil {
 		for testPos != NoPosition {
-			r := testPos.GetRank()
-			f := testPos.GetFile()
+			f := testPos.FileOrd()
+			r := testPos.RankOrd()
 			// if it's a raw position, it's a pawn move
 			if color == White {
-				testPos = PositionFromFileRank(f, r-1)
+				testPos = PositionFromOrd(f, r-1)
 				if b.GetPiece(testPos) == WhitePawn {
 					return Move{testPos, pos, promote}, nil
 				}
@@ -201,7 +201,7 @@ func (b *Board) MoveFromAlgebraic(str string, color Color) (Move, error) {
 					return NilMove, fmt.Errorf("Position out of bounds")
 				}
 			} else {
-				testPos = PositionFromFileRank(f, r+1)
+				testPos = PositionFromOrd(f, r+1)
 				if b.GetPiece(testPos) == BlackPawn {
 					return Move{testPos, pos, promote}, nil
 				}
@@ -222,7 +222,7 @@ func (b *Board) MoveFromAlgebraic(str string, color Color) (Move, error) {
 				return NilMove, ErrUnknownMove
 			}
 		case 'N':
-			pos, err := ParsePosition(str[len(str)-2 : len(str)])
+			pos, err := ParsePosition(str[len(str)-2:])
 			if err != nil {
 				return NilMove, err
 			}
@@ -414,9 +414,10 @@ func (b *Board) MakeMove(m Move) error {
 			}
 		}
 	case BlackPawn:
-		if m.From.GetFile() != m.To.GetFile() &&
-			take == NoPiece {
-			b.RemovePiece(PositionFromFileRank(m.To.GetFile(), m.To.GetRank()+1), WhitePawn)
+		fTo := m.To.FileOrd()
+		rTo := m.To.RankOrd()
+		if m.From.FileOrd() != fTo && take == NoPiece {
+			b.RemovePiece(PositionFromOrd(fTo, rTo+1), WhitePawn)
 		}
 		if m.Promote != NoPiece {
 			b.SetPiece(m.To, m.Promote)
@@ -460,7 +461,7 @@ func (b *Board) MakeMove(m Move) error {
 	case WhitePawn:
 		if m.From.GetFile() != m.To.GetFile() &&
 			take == NoPiece {
-			b.RemovePiece(PositionFromFileRank(m.To.GetFile(), m.To.GetRank()-1), BlackPawn)
+			b.RemovePiece(PositionFromOrd(m.To.GetFile(), m.To.GetRank()-1), BlackPawn)
 		}
 		if m.Promote != NoPiece {
 			// TODO refactor this. semi hacky
@@ -607,8 +608,8 @@ func (b Board) findAttackingPawn(pos Position, color Color, check bool) (Positio
 		if b.lastMove.To.GetFile() == pos.GetFile() &&
 			b.lastMove.To.GetRank() == pos.GetRank()-1 &&
 			b.lastMove.From.GetRank() == pos.GetRank()+1 &&
-			b.GetPiece(PositionFromFileRank(pos.GetFile(), pos.GetRank()-1)) == BlackPawn {
-			testPos := PositionFromFileRank(pos.GetFile()+1, pos.GetRank()-1)
+			b.GetPiece(PositionFromOrd(pos.GetFile(), pos.GetRank()-1)) == BlackPawn {
+			testPos := PositionFromOrd(pos.GetFile()+1, pos.GetRank()-1)
 			if b.GetPiece(testPos) == WhitePawn &&
 				(!check || !b.moveIntoCheck(Move{testPos, pos, NoPiece}, color)) {
 				retPos = testPos
@@ -616,7 +617,7 @@ func (b Board) findAttackingPawn(pos Position, color Color, check bool) (Positio
 				// TODO remove these breaks
 				break
 			}
-			testPos = PositionFromFileRank(pos.GetFile()-1, pos.GetRank()-1)
+			testPos = PositionFromOrd(pos.GetFile()-1, pos.GetRank()-1)
 			if b.GetPiece(testPos) == WhitePawn &&
 				(!check || !b.moveIntoCheck(Move{testPos, pos, NoPiece}, color)) {
 				retPos = testPos
@@ -624,13 +625,13 @@ func (b Board) findAttackingPawn(pos Position, color Color, check bool) (Positio
 				break
 			}
 		}
-		testPos := PositionFromFileRank(pos.GetFile()+1, pos.GetRank()-1)
+		testPos := PositionFromOrd(pos.GetFile()+1, pos.GetRank()-1)
 		if b.GetPiece(testPos) == WhitePawn &&
 			(!check || !b.moveIntoCheck(Move{testPos, pos, NoPiece}, color)) {
 			retPos = testPos
 			count++
 		}
-		testPos = PositionFromFileRank(pos.GetFile()-1, pos.GetRank()-1)
+		testPos = PositionFromOrd(pos.GetFile()-1, pos.GetRank()-1)
 		if b.GetPiece(testPos) == WhitePawn &&
 			(!check || !b.moveIntoCheck(Move{testPos, pos, NoPiece}, color)) {
 			retPos = testPos
@@ -641,15 +642,15 @@ func (b Board) findAttackingPawn(pos Position, color Color, check bool) (Positio
 		if b.lastMove.To.GetFile() == pos.GetFile() &&
 			b.lastMove.To.GetRank() == pos.GetRank()+1 &&
 			b.lastMove.From.GetRank() == pos.GetRank()-1 &&
-			b.GetPiece(PositionFromFileRank(pos.GetFile(), pos.GetRank()+1)) == WhitePawn {
-			testPos := PositionFromFileRank(pos.GetFile()+1, pos.GetRank()+1)
+			b.GetPiece(PositionFromOrd(pos.GetFile(), pos.GetRank()+1)) == WhitePawn {
+			testPos := PositionFromOrd(pos.GetFile()+1, pos.GetRank()+1)
 			if b.GetPiece(testPos) == BlackPawn &&
 				(!check || !b.moveIntoCheck(Move{testPos, pos, NoPiece}, color)) {
 				retPos = testPos
 				count++
 				break
 			}
-			testPos = PositionFromFileRank(pos.GetFile()-1, pos.GetRank()+1)
+			testPos = PositionFromOrd(pos.GetFile()-1, pos.GetRank()+1)
 			if b.GetPiece(testPos) == BlackPawn &&
 				(!check || !b.moveIntoCheck(Move{testPos, pos, NoPiece}, color)) {
 				retPos = testPos
@@ -657,13 +658,13 @@ func (b Board) findAttackingPawn(pos Position, color Color, check bool) (Positio
 				break
 			}
 		}
-		testPos := PositionFromFileRank(pos.GetFile()+1, pos.GetRank()+1)
+		testPos := PositionFromOrd(pos.GetFile()+1, pos.GetRank()+1)
 		if b.GetPiece(testPos) == BlackPawn &&
 			(!check || !b.moveIntoCheck(Move{testPos, pos, NoPiece}, color)) {
 			retPos = testPos
 			count++
 		}
-		testPos = PositionFromFileRank(pos.GetFile()-1, pos.GetRank()+1)
+		testPos = PositionFromOrd(pos.GetFile()-1, pos.GetRank()+1)
 		if b.GetPiece(testPos) == BlackPawn &&
 			(!check || !b.moveIntoCheck(Move{testPos, pos, NoPiece}, color)) {
 			retPos = testPos
@@ -688,14 +689,14 @@ func (b Board) findAttackingPawnFromFile(pos Position, color Color, file File) (
 		if b.lastMove.To.GetFile() == pos.GetFile() &&
 			b.lastMove.To.GetRank() == pos.GetRank()-1 &&
 			b.lastMove.From.GetRank() == pos.GetRank()+1 &&
-			b.GetPiece(PositionFromFileRank(pos.GetFile(), pos.GetRank()-1)) == BlackPawn {
-			if b.GetPiece(PositionFromFileRank(file, pos.GetRank()-1)) == WhitePawn {
-				retPos = PositionFromFileRank(file, pos.GetRank()-1)
+			b.GetPiece(PositionFromOrd(pos.GetFile(), pos.GetRank()-1)) == BlackPawn {
+			if b.GetPiece(PositionFromOrd(file, pos.GetRank()-1)) == WhitePawn {
+				retPos = PositionFromOrd(file, pos.GetRank()-1)
 				count++
 			}
 		}
-		if b.GetPiece(PositionFromFileRank(file, pos.GetRank()-1)) == WhitePawn {
-			retPos = PositionFromFileRank(file, pos.GetRank()-1)
+		if b.GetPiece(PositionFromOrd(file, pos.GetRank()-1)) == WhitePawn {
+			retPos = PositionFromOrd(file, pos.GetRank()-1)
 			count++
 		}
 	} else {
@@ -703,14 +704,14 @@ func (b Board) findAttackingPawnFromFile(pos Position, color Color, file File) (
 		if b.lastMove.To.GetFile() == pos.GetFile() &&
 			b.lastMove.To.GetRank() == pos.GetRank()+1 &&
 			b.lastMove.From.GetRank() == pos.GetRank()-1 &&
-			b.GetPiece(PositionFromFileRank(pos.GetFile(), pos.GetRank()+1)) == WhitePawn {
-			if b.GetPiece(PositionFromFileRank(file, pos.GetRank()+1)) == BlackPawn {
-				retPos = PositionFromFileRank(file, pos.GetRank()+1)
+			b.GetPiece(PositionFromOrd(pos.GetFile(), pos.GetRank()+1)) == WhitePawn {
+			if b.GetPiece(PositionFromOrd(file, pos.GetRank()+1)) == BlackPawn {
+				retPos = PositionFromOrd(file, pos.GetRank()+1)
 				count++
 			}
 		}
-		if b.GetPiece(PositionFromFileRank(file, pos.GetRank()+1)) == BlackPawn {
-			retPos = PositionFromFileRank(file, pos.GetRank()+1)
+		if b.GetPiece(PositionFromOrd(file, pos.GetRank()+1)) == BlackPawn {
+			retPos = PositionFromOrd(file, pos.GetRank()+1)
 			count++
 		}
 	}
@@ -732,7 +733,7 @@ func (b Board) findAttackingBishop(pos Position, color Color, check bool) (Posit
 	for {
 		f--
 		r--
-		testPos := PositionFromFileRank(f, r)
+		testPos := PositionFromOrd(f, r)
 		if b.checkBishopColor(testPos, color) &&
 			(!check || !b.moveIntoCheck(Move{testPos, pos, NoPiece}, color)) {
 			retPos = testPos
@@ -747,7 +748,7 @@ func (b Board) findAttackingBishop(pos Position, color Color, check bool) (Posit
 	for {
 		f--
 		r++
-		testPos := PositionFromFileRank(f, r)
+		testPos := PositionFromOrd(f, r)
 		if b.checkBishopColor(testPos, color) &&
 			(!check || !b.moveIntoCheck(Move{testPos, pos, NoPiece}, color)) {
 			retPos = testPos
@@ -762,7 +763,7 @@ func (b Board) findAttackingBishop(pos Position, color Color, check bool) (Posit
 	for {
 		f++
 		r++
-		testPos := PositionFromFileRank(f, r)
+		testPos := PositionFromOrd(f, r)
 		if b.checkBishopColor(testPos, color) &&
 			(!check || !b.moveIntoCheck(Move{testPos, pos, NoPiece}, color)) {
 			retPos = testPos
@@ -777,7 +778,7 @@ func (b Board) findAttackingBishop(pos Position, color Color, check bool) (Posit
 	for {
 		f++
 		r--
-		testPos := PositionFromFileRank(f, r)
+		testPos := PositionFromOrd(f, r)
 		if b.checkBishopColor(testPos, color) &&
 			(!check || !b.moveIntoCheck(Move{testPos, pos, NoPiece}, color)) {
 			retPos = testPos
@@ -810,7 +811,7 @@ func (b Board) findAttackingQueen(pos Position, color Color, check bool) (Positi
 	f := pos.GetFile()
 	for {
 		f--
-		testPos := PositionFromFileRank(f, r)
+		testPos := PositionFromOrd(f, r)
 		if b.checkQueenColor(testPos, color) && (!check || !b.moveIntoCheck(Move{testPos, pos, NoPiece}, color)) {
 			retPos = testPos
 			count++
@@ -823,7 +824,7 @@ func (b Board) findAttackingQueen(pos Position, color Color, check bool) (Positi
 	f = pos.GetFile()
 	for {
 		f++
-		testPos := PositionFromFileRank(f, r)
+		testPos := PositionFromOrd(f, r)
 		if b.checkQueenColor(testPos, color) && (!check || !b.moveIntoCheck(Move{testPos, pos, NoPiece}, color)) {
 			retPos = testPos
 			count++
@@ -836,7 +837,7 @@ func (b Board) findAttackingQueen(pos Position, color Color, check bool) (Positi
 	f = pos.GetFile()
 	for {
 		r++
-		testPos := PositionFromFileRank(f, r)
+		testPos := PositionFromOrd(f, r)
 		if b.checkQueenColor(testPos, color) && (!check || !b.moveIntoCheck(Move{testPos, pos, NoPiece}, color)) {
 			retPos = testPos
 			count++
@@ -849,7 +850,7 @@ func (b Board) findAttackingQueen(pos Position, color Color, check bool) (Positi
 	f = pos.GetFile()
 	for {
 		r--
-		testPos := PositionFromFileRank(f, r)
+		testPos := PositionFromOrd(f, r)
 		if b.checkQueenColor(testPos, color) && (!check || !b.moveIntoCheck(Move{testPos, pos, NoPiece}, color)) {
 			retPos = testPos
 			count++
@@ -864,7 +865,7 @@ func (b Board) findAttackingQueen(pos Position, color Color, check bool) (Positi
 	for {
 		f--
 		r--
-		testPos := PositionFromFileRank(f, r)
+		testPos := PositionFromOrd(f, r)
 		if b.checkQueenColor(testPos, color) && (!check || !b.moveIntoCheck(Move{testPos, pos, NoPiece}, color)) {
 			retPos = testPos
 			count++
@@ -878,7 +879,7 @@ func (b Board) findAttackingQueen(pos Position, color Color, check bool) (Positi
 	for {
 		f--
 		r++
-		testPos := PositionFromFileRank(f, r)
+		testPos := PositionFromOrd(f, r)
 		if b.checkQueenColor(testPos, color) && (!check || !b.moveIntoCheck(Move{testPos, pos, NoPiece}, color)) {
 			retPos = testPos
 			count++
@@ -892,7 +893,7 @@ func (b Board) findAttackingQueen(pos Position, color Color, check bool) (Positi
 	for {
 		f++
 		r++
-		testPos := PositionFromFileRank(f, r)
+		testPos := PositionFromOrd(f, r)
 		if b.checkQueenColor(testPos, color) && (!check || !b.moveIntoCheck(Move{testPos, pos, NoPiece}, color)) {
 			retPos = testPos
 			count++
@@ -906,7 +907,7 @@ func (b Board) findAttackingQueen(pos Position, color Color, check bool) (Positi
 	for {
 		f++
 		r--
-		testPos := PositionFromFileRank(f, r)
+		testPos := PositionFromOrd(f, r)
 		if b.checkQueenColor(testPos, color) && (!check || !b.moveIntoCheck(Move{testPos, pos, NoPiece}, color)) {
 			retPos = testPos
 			count++
@@ -937,7 +938,7 @@ func (b Board) findAttackingKing(pos Position, color Color) (Position, error) {
 	r := pos.GetRank()
 	f := pos.GetFile()
 	f--
-	testPos := PositionFromFileRank(f, r)
+	testPos := PositionFromOrd(f, r)
 	if b.checkKingColor(testPos, color) {
 		retPos = testPos
 		count++
@@ -946,7 +947,7 @@ func (b Board) findAttackingKing(pos Position, color Color) (Position, error) {
 	r = pos.GetRank()
 	f = pos.GetFile()
 	f++
-	testPos = PositionFromFileRank(f, r)
+	testPos = PositionFromOrd(f, r)
 	if b.checkKingColor(testPos, color) {
 		retPos = testPos
 		count++
@@ -955,7 +956,7 @@ func (b Board) findAttackingKing(pos Position, color Color) (Position, error) {
 	r = pos.GetRank()
 	f = pos.GetFile()
 	r++
-	testPos = PositionFromFileRank(f, r)
+	testPos = PositionFromOrd(f, r)
 	if b.checkKingColor(testPos, color) {
 		retPos = testPos
 		count++
@@ -964,7 +965,7 @@ func (b Board) findAttackingKing(pos Position, color Color) (Position, error) {
 	r = pos.GetRank()
 	f = pos.GetFile()
 	r--
-	testPos = PositionFromFileRank(f, r)
+	testPos = PositionFromOrd(f, r)
 	if b.checkKingColor(testPos, color) {
 		retPos = testPos
 		count++
@@ -975,7 +976,7 @@ func (b Board) findAttackingKing(pos Position, color Color) (Position, error) {
 	f = pos.GetFile()
 	f--
 	r--
-	testPos = PositionFromFileRank(f, r)
+	testPos = PositionFromOrd(f, r)
 	if b.checkKingColor(testPos, color) {
 		retPos = testPos
 		count++
@@ -985,7 +986,7 @@ func (b Board) findAttackingKing(pos Position, color Color) (Position, error) {
 	f = pos.GetFile()
 	f--
 	r++
-	testPos = PositionFromFileRank(f, r)
+	testPos = PositionFromOrd(f, r)
 	if b.checkKingColor(testPos, color) {
 		retPos = testPos
 		count++
@@ -995,7 +996,7 @@ func (b Board) findAttackingKing(pos Position, color Color) (Position, error) {
 	f = pos.GetFile()
 	f++
 	r++
-	testPos = PositionFromFileRank(f, r)
+	testPos = PositionFromOrd(f, r)
 	if b.checkKingColor(testPos, color) {
 		retPos = testPos
 		count++
@@ -1005,7 +1006,7 @@ func (b Board) findAttackingKing(pos Position, color Color) (Position, error) {
 	f = pos.GetFile()
 	f++
 	r--
-	testPos = PositionFromFileRank(f, r)
+	testPos = PositionFromOrd(f, r)
 	if b.checkKingColor(testPos, color) {
 		retPos = testPos
 		count++
@@ -1124,7 +1125,7 @@ func (b Board) moveIntoCheck(move Move, color Color) bool {
 func (b Board) FindKing(color Color) Position {
 	for r := Rank8; r >= Rank1; r-- {
 		for f := FileA; f <= FileH; f++ {
-			pos := PositionFromFileRank(f, r)
+			pos := PositionFromOrd(f, r)
 			p := b.GetPiece(pos)
 			if (p == BlackKing || p == WhiteKing) && p.Color() == color {
 				return pos
