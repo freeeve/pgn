@@ -5,7 +5,6 @@ package pgn
 import (
 	"bufio"
 	"bytes"
-	"errors"
 	"fmt"
 	"io"
 	"strings"
@@ -13,7 +12,6 @@ import (
 
 type PGNScanner struct {
 	ch        chan token
-	done      bool
 	tokenizer *PGNTokenizer
 }
 
@@ -135,14 +133,14 @@ func NewPGNScanner(r io.Reader) *PGNScanner {
 }
 
 func newPGNScanner(r io.Reader, onlyTags bool) *PGNScanner {
-	tokens := make(chan token, 1024)
+	tokens := make(chan token, 128)
 	tokenizer := &PGNTokenizer{r: r, onlyTags: onlyTags, ch: tokens}
 	go tokenizer.tokenize()
 	return &PGNScanner{tokenizer: tokenizer, ch: tokens}
 }
 
 func (ps *PGNScanner) Next() bool {
-	if ps.done {
+	if ps.tokenizer.done {
 		return false
 	}
 	return true
@@ -152,7 +150,6 @@ func (ps *PGNScanner) ParseGame() (*Game, error) {
 	g := Game{Tags: map[string]string{}, Moves: []Move{}}
 	var board *Board
 	var err error
-	//moves := false
 	var next = White
 	for v := range ps.ch {
 		switch v.tokenType {
@@ -188,16 +185,13 @@ func (ps *PGNScanner) ParseGame() (*Game, error) {
 			return &g, nil
 		}
 	}
-	if ps.tokenizer.done {
-		ps.done = true
-	}
 	return &g, nil
 }
 
 func (g *Game) addTag(tag string) error {
 	firstSpace := strings.Index(tag, " ")
 	if firstSpace == -1 {
-		return errors.New("pgn: unparseable tag")
+		return ErrUnparseableTag
 	}
 	g.Tags[tag[:firstSpace]] = strings.Trim(tag[firstSpace:], " \"")
 	return nil

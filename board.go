@@ -18,6 +18,7 @@ var (
 	ErrMoveThroughCheck    = errors.New("pgn: move through check")
 	ErrMoveIntoCheck       = errors.New("pgn: move into check")
 	ErrMoveInvalidCastle   = errors.New("pgn: move invalid castle")
+	ErrUnparseableTag      = errors.New("pgn: unparseable tag")
 )
 
 type Board struct {
