@@ -169,8 +169,8 @@ func (s *PGNSuite) BenchmarkParse(c *C) {
 
 	for i := 0; i < c.N; i++ {
 		c.StopTimer()
-		r0 := strings.NewReader(simple)
-		ps := NewPGNScanner(r0)
+		r := strings.NewReader(simple)
+		ps := NewPGNScanner(r)
 		c.StartTimer()
 		ps.ParseGame()
 	}
