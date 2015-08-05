@@ -1,8 +1,6 @@
 package pgn
 
-import (
-	. "gopkg.in/check.v1"
-)
+import . "gopkg.in/check.v1"
 
 func (s *BoardSuite) TestBoardMoveFromAlgebraicBlackBishop(c *C) {
 	b, err := NewBoardFEN("rnbqkbnr/ppp1pppp/8/3p4/3PP3/8/PPP2PPP/RNBQKBNR b KQkq - 0 2")

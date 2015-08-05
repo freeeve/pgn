@@ -8,76 +8,76 @@ type PositionSuite struct{}
 
 var _ = Suite(&PositionSuite{})
 
-func (s *PositionSuite) TestGetRank1(c *C) {
-	c.Assert(B1.GetRank(), Equals, Rank1)
+func (s *PositionSuite) TestRank1(c *C) {
+	c.Assert(B1.Rank(), Equals, Rank1)
 }
 
-func (s *PositionSuite) TestGetRank2(c *C) {
-	c.Assert(A2.GetRank(), Equals, Rank2)
+func (s *PositionSuite) TestRank2(c *C) {
+	c.Assert(A2.Rank(), Equals, Rank2)
 }
 
-func (s *PositionSuite) TestGetRank3(c *C) {
-	c.Assert(D3.GetRank(), Equals, Rank3)
+func (s *PositionSuite) TestRank3(c *C) {
+	c.Assert(D3.Rank(), Equals, Rank3)
 }
 
-func (s *PositionSuite) TestGetRank4(c *C) {
-	c.Assert(C4.GetRank(), Equals, Rank4)
+func (s *PositionSuite) TestRank4(c *C) {
+	c.Assert(C4.Rank(), Equals, Rank4)
 }
 
-func (s *PositionSuite) TestGetRank5(c *C) {
-	c.Assert(F5.GetRank(), Equals, Rank5)
+func (s *PositionSuite) TestRank5(c *C) {
+	c.Assert(F5.Rank(), Equals, Rank5)
 }
 
-func (s *PositionSuite) TestGetRank6(c *C) {
-	c.Assert(E6.GetRank(), Equals, Rank6)
+func (s *PositionSuite) TestRank6(c *C) {
+	c.Assert(E6.Rank(), Equals, Rank6)
 }
 
-func (s *PositionSuite) TestGetRank7(c *C) {
-	c.Assert(H7.GetRank(), Equals, Rank7)
+func (s *PositionSuite) TestRank7(c *C) {
+	c.Assert(H7.Rank(), Equals, Rank7)
 }
 
-func (s *PositionSuite) TestGetRank8(c *C) {
-	c.Assert(G8.GetRank(), Equals, Rank8)
+func (s *PositionSuite) TestRank8(c *C) {
+	c.Assert(G8.Rank(), Equals, Rank8)
 }
 
-func (s *PositionSuite) TestGetNoRank(c *C) {
-	c.Assert(NoPosition.GetRank(), Equals, NoRank)
+func (s *PositionSuite) TestNoRank(c *C) {
+	c.Assert(NoPosition.Rank(), Equals, NoPosition)
 }
 
-func (s *PositionSuite) TestGetFileA(c *C) {
-	c.Assert(A1.GetFile(), Equals, FileA)
+func (s *PositionSuite) TestFileA(c *C) {
+	c.Assert(A1.File(), Equals, FileA)
 }
 
-func (s *PositionSuite) TestGetFileB(c *C) {
-	c.Assert(B6.GetFile(), Equals, FileB)
+func (s *PositionSuite) TestFileB(c *C) {
+	c.Assert(B6.File(), Equals, FileB)
 }
 
-func (s *PositionSuite) TestGetFileC(c *C) {
-	c.Assert(C7.GetFile(), Equals, FileC)
+func (s *PositionSuite) TestFileC(c *C) {
+	c.Assert(C7.File(), Equals, FileC)
 }
 
-func (s *PositionSuite) TestGetFileD(c *C) {
-	c.Assert(D5.GetFile(), Equals, FileD)
+func (s *PositionSuite) TestFileD(c *C) {
+	c.Assert(D5.File(), Equals, FileD)
 }
 
-func (s *PositionSuite) TestGetFileE(c *C) {
-	c.Assert(E8.GetFile(), Equals, FileE)
+func (s *PositionSuite) TestFileE(c *C) {
+	c.Assert(E8.File(), Equals, FileE)
 }
 
-func (s *PositionSuite) TestGetFileF(c *C) {
-	c.Assert(F4.GetFile(), Equals, FileF)
+func (s *PositionSuite) TestFileF(c *C) {
+	c.Assert(F4.File(), Equals, FileF)
 }
 
-func (s *PositionSuite) TestGetFileG(c *C) {
-	c.Assert(G2.GetFile(), Equals, FileG)
+func (s *PositionSuite) TestFileG(c *C) {
+	c.Assert(G2.File(), Equals, FileG)
 }
 
-func (s *PositionSuite) TestGetFileH(c *C) {
-	c.Assert(H3.GetFile(), Equals, FileH)
+func (s *PositionSuite) TestFileH(c *C) {
+	c.Assert(H3.File(), Equals, FileH)
 }
 
-func (s *PositionSuite) TestGetNoFile(c *C) {
-	c.Assert(NoPosition.GetFile(), Equals, NoFile)
+func (s *PositionSuite) TestNoFile(c *C) {
+	c.Assert(NoPosition.File(), Equals, NoPosition)
 }
 
 func (s *PositionSuite) TestPositionString(c *C) {

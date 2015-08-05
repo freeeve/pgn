@@ -114,7 +114,7 @@ func PositionFromOrd(file, rank int) Position {
 // representing a file, a rank, or a fully specific square. Inputs are treated
 // case-insensitively.
 func ParsePosition(s string) (Position, error) {
-	p, ok := parsePosition(pstr)
+	p, ok := parsePosition(s)
 	if !ok {
 		return 0, fmt.Errorf("pgn: invalid position string: %s", s)
 	}
@@ -133,9 +133,9 @@ func parsePosition(s string) (p Position, ok bool) {
 		b += 'a' - 'A'
 		fallthrough
 	case 'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h':
-		p = (1 << (b - 'a')).File()
+		p = Position(1 << (b - 'a')).File()
 	case '1', '2', '3', '4', '5', '6', '7', '8':
-		p = (1 << (8*b - '1')).Rank()
+		p = Position(1 << (8 * (b - '1'))).Rank()
 		rankonly = true
 	default:
 		return 0, false
@@ -150,7 +150,7 @@ func parsePosition(s string) (p Position, ok bool) {
 	// now refine with a rank
 	switch b := s[1]; b {
 	case '1', '2', '3', '4', '5', '6', '7', '8':
-		p &= (1 << (8*b - '1')).Rank()
+		p &= Position(1 << (8 * (b - '1'))).Rank()
 	default:
 		return 0, false
 	}

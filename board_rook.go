@@ -4,11 +4,11 @@ func (b Board) findAttackingRook(pos Position, color Color, check bool) (Positio
 	count := 0
 	retPos := NoPosition
 
-	r := pos.GetRank()
-	f := pos.GetFile()
+	r := pos.RankOrd()
+	f := pos.FileOrd()
 	for {
 		f--
-		testPos := PositionFromFileRank(f, r)
+		testPos := PositionFromOrd(f, r)
 		if b.checkRookColor(testPos, color) && (!check || !b.moveIntoCheck(Move{testPos, pos, NoPiece}, color)) {
 			retPos = testPos
 			count++
@@ -18,11 +18,11 @@ func (b Board) findAttackingRook(pos Position, color Color, check bool) (Positio
 		}
 	}
 
-	r = pos.GetRank()
-	f = pos.GetFile()
+	r = pos.RankOrd()
+	f = pos.FileOrd()
 	for {
 		f++
-		testPos := PositionFromFileRank(f, r)
+		testPos := PositionFromOrd(f, r)
 		if b.checkRookColor(testPos, color) && (!check || !b.moveIntoCheck(Move{testPos, pos, NoPiece}, color)) {
 			retPos = testPos
 			count++
@@ -32,11 +32,11 @@ func (b Board) findAttackingRook(pos Position, color Color, check bool) (Positio
 		}
 	}
 
-	r = pos.GetRank()
-	f = pos.GetFile()
+	r = pos.RankOrd()
+	f = pos.FileOrd()
 	for {
 		r++
-		testPos := PositionFromFileRank(f, r)
+		testPos := PositionFromOrd(f, r)
 		if b.checkRookColor(testPos, color) && (!check || !b.moveIntoCheck(Move{testPos, pos, NoPiece}, color)) {
 			retPos = testPos
 			count++
@@ -46,11 +46,11 @@ func (b Board) findAttackingRook(pos Position, color Color, check bool) (Positio
 		}
 	}
 
-	r = pos.GetRank()
-	f = pos.GetFile()
+	r = pos.RankOrd()
+	f = pos.FileOrd()
 	for {
 		r--
-		testPos := PositionFromFileRank(f, r)
+		testPos := PositionFromOrd(f, r)
 		if b.checkRookColor(testPos, color) && (!check || !b.moveIntoCheck(Move{testPos, pos, NoPiece}, color)) {
 			retPos = testPos
 			count++
@@ -69,16 +69,16 @@ func (b Board) findAttackingRook(pos Position, color Color, check bool) (Positio
 	return retPos, nil
 }
 
-func (b Board) findAttackingRookFromFile(pos Position, color Color, file File) (Position, error) {
+func (b Board) findAttackingRookFromFile(pos Position, color Color, file Position) (Position, error) {
 	count := 0
 	retPos := NoPosition
 
-	r := pos.GetRank()
-	f := pos.GetFile()
+	r := pos.RankOrd()
+	f := pos.FileOrd()
 	for {
 		f--
-		testPos := PositionFromFileRank(f, r)
-		if file == f && b.checkRookColor(testPos, color) {
+		testPos := PositionFromOrd(f, r)
+		if file.FileOrd() == f && b.checkRookColor(testPos, color) {
 			retPos = testPos
 			count++
 			break
@@ -87,12 +87,12 @@ func (b Board) findAttackingRookFromFile(pos Position, color Color, file File) (
 		}
 	}
 
-	r = pos.GetRank()
-	f = pos.GetFile()
+	r = pos.RankOrd()
+	f = pos.FileOrd()
 	for {
 		f++
-		testPos := PositionFromFileRank(f, r)
-		if file == f && b.checkRookColor(testPos, color) {
+		testPos := PositionFromOrd(f, r)
+		if file.FileOrd() == f && b.checkRookColor(testPos, color) {
 			retPos = testPos
 			count++
 			break
@@ -101,12 +101,12 @@ func (b Board) findAttackingRookFromFile(pos Position, color Color, file File) (
 		}
 	}
 
-	if file == pos.GetFile() {
-		r = pos.GetRank()
-		f = pos.GetFile()
+	if file.FileOrd() == pos.FileOrd() {
+		r = pos.RankOrd()
+		f = pos.FileOrd()
 		for {
 			r++
-			testPos := PositionFromFileRank(f, r)
+			testPos := PositionFromOrd(f, r)
 			if b.checkRookColor(testPos, color) {
 				retPos = testPos
 				count++
@@ -116,11 +116,11 @@ func (b Board) findAttackingRookFromFile(pos Position, color Color, file File) (
 			}
 		}
 
-		r = pos.GetRank()
-		f = pos.GetFile()
+		r = pos.RankOrd()
+		f = pos.FileOrd()
 		for {
 			r--
-			testPos := PositionFromFileRank(f, r)
+			testPos := PositionFromOrd(f, r)
 			if b.checkRookColor(testPos, color) {
 				retPos = testPos
 				count++
@@ -139,16 +139,16 @@ func (b Board) findAttackingRookFromFile(pos Position, color Color, file File) (
 	return retPos, nil
 }
 
-func (b Board) findAttackingRookFromRank(pos Position, color Color, rank Rank) (Position, error) {
+func (b Board) findAttackingRookFromRank(pos Position, color Color, rank Position) (Position, error) {
 	count := 0
 	retPos := NoPosition
 
-	r := pos.GetRank()
-	f := pos.GetFile()
+	r := pos.RankOrd()
+	f := pos.FileOrd()
 	for {
 		r--
-		testPos := PositionFromFileRank(f, r)
-		if rank == r && b.checkRookColor(testPos, color) {
+		testPos := PositionFromOrd(f, r)
+		if rank.RankOrd() == r && b.checkRookColor(testPos, color) {
 			retPos = testPos
 			count++
 			break
@@ -157,12 +157,12 @@ func (b Board) findAttackingRookFromRank(pos Position, color Color, rank Rank) (
 		}
 	}
 
-	r = pos.GetRank()
-	f = pos.GetFile()
+	r = pos.RankOrd()
+	f = pos.FileOrd()
 	for {
 		r++
-		testPos := PositionFromFileRank(f, r)
-		if rank == r && b.checkRookColor(testPos, color) {
+		testPos := PositionFromOrd(f, r)
+		if rank.RankOrd() == r && b.checkRookColor(testPos, color) {
 			retPos = testPos
 			count++
 			break
@@ -171,12 +171,12 @@ func (b Board) findAttackingRookFromRank(pos Position, color Color, rank Rank) (
 		}
 	}
 
-	if rank == pos.GetRank() {
-		r := pos.GetRank()
-		f := pos.GetFile()
+	if rank.RankOrd() == pos.RankOrd() {
+		r := pos.RankOrd()
+		f := pos.FileOrd()
 		for {
 			f--
-			testPos := PositionFromFileRank(f, r)
+			testPos := PositionFromOrd(f, r)
 			if b.checkRookColor(testPos, color) {
 				retPos = testPos
 				count++
@@ -186,11 +186,11 @@ func (b Board) findAttackingRookFromRank(pos Position, color Color, rank Rank) (
 			}
 		}
 
-		r = pos.GetRank()
-		f = pos.GetFile()
+		r = pos.RankOrd()
+		f = pos.FileOrd()
 		for {
 			f++
-			testPos := PositionFromFileRank(f, r)
+			testPos := PositionFromOrd(f, r)
 			if b.checkRookColor(testPos, color) {
 				retPos = testPos
 				count++

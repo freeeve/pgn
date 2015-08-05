@@ -112,12 +112,12 @@ func FENFromBoard(b *Board) FEN {
 	f.HalfmoveClock = b.halfmoveClock
 	f.Fullmove = b.fullmove
 	if b.GetPiece(b.lastMove.To) == WhitePawn &&
-		b.lastMove.To.GetRank()-2 == b.lastMove.From.GetRank() {
-		f.EnPassantVulnerable = PositionFromFileRank(b.lastMove.To.GetFile(), b.lastMove.To.GetRank()-1)
+		b.lastMove.To.RankOrd()-2 == b.lastMove.From.RankOrd() {
+		f.EnPassantVulnerable = PositionFromOrd(b.lastMove.To.FileOrd(), b.lastMove.To.RankOrd()-1)
 	}
 	if b.GetPiece(b.lastMove.To) == BlackPawn &&
-		b.lastMove.To.GetRank()+2 == b.lastMove.From.GetRank() {
-		f.EnPassantVulnerable = PositionFromFileRank(b.lastMove.To.GetFile(), b.lastMove.To.GetRank()+1)
+		b.lastMove.To.RankOrd()+2 == b.lastMove.From.RankOrd() {
+		f.EnPassantVulnerable = PositionFromOrd(b.lastMove.To.FileOrd(), b.lastMove.To.RankOrd()+1)
 	}
 	return f
 }
