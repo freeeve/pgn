@@ -192,8 +192,26 @@ func (p Position) Rank() Position {
 	return (m & p) * 255
 }
 
-// FileOrd returns 0-7 for positions that correspond to a single square, -1 otherwise.
+// FileOrd returns 0-7 for positions that correspond to a file or single square, -1 otherwise.
 func (p Position) FileOrd() int {
+	switch p {
+	case FileA:
+		return 0
+	case FileB:
+		return 1
+	case FileC:
+		return 2
+	case FileD:
+		return 3
+	case FileE:
+		return 4
+	case FileF:
+		return 5
+	case FileG:
+		return 6
+	case FileH:
+		return 7
+	}
 	if !p.IsSquare() {
 		return -1
 	}
@@ -231,6 +249,24 @@ func (p Position) FileSym() byte {
 
 // RankOrd returns 0-7 for positions that correspond to a single square, -1 otherwise.
 func (p Position) RankOrd() int {
+	switch p {
+	case Rank1:
+		return 0
+	case Rank2:
+		return 1
+	case Rank3:
+		return 2
+	case Rank4:
+		return 3
+	case Rank5:
+		return 4
+	case Rank6:
+		return 5
+	case Rank7:
+		return 6
+	case Rank8:
+		return 7
+	}
 	if !p.IsSquare() {
 		return -1
 	}
