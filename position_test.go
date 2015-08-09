@@ -95,3 +95,9 @@ func (s *PositionSuite) TestParsePosition_uppercase(c *C) {
 	c.Assert(err, IsNil)
 	c.Assert(p, Equals, H8)
 }
+
+func (s *PositionSuite) TestParsePositionFile(c *C) {
+	p, err := ParsePosition("d")
+	c.Assert(err, IsNil)
+	c.Assert(p, Equals, FileD)
+}

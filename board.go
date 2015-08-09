@@ -230,13 +230,19 @@ func (b *Board) MoveFromAlgebraic(str string, color Color) (Move, error) {
 			fromPos, err := b.findAttackingKnight(pos, color, true)
 			if err == ErrAmbiguousMove {
 				if str[1] >= 'a' && str[1] <= 'h' {
-					f, _ := ParsePosition(str[1:1])
+					f, err2 := ParsePosition(str[1:2])
+					if err2 != nil {
+						return NilMove, err
+					}
 					fromPos, err = b.findAttackingKnightFromFile(pos, color, f)
 					if err == nil {
 						return Move{fromPos, pos, NoPiece}, nil
 					}
 				} else if str[1] >= '1' && str[1] <= '8' {
-					r, _ := ParsePosition(str[1:1])
+					r, err2 := ParsePosition(str[1:2])
+					if err2 != nil {
+						return NilMove, err
+					}
 					fromPos, err = b.findAttackingKnightFromRank(pos, color, r)
 					if err == nil {
 						return Move{fromPos, pos, NoPiece}, nil
@@ -267,13 +273,13 @@ func (b *Board) MoveFromAlgebraic(str string, color Color) (Move, error) {
 			fromPos, err := b.findAttackingRook(pos, color, true)
 			if err == ErrAmbiguousMove {
 				if str[1] >= 'a' && str[1] <= 'h' {
-					f, _ := ParsePosition(str[1:1])
+					f, _ := ParsePosition(str[1:2])
 					fromPos, err = b.findAttackingRookFromFile(pos, color, f)
 					if err == nil {
 						return Move{fromPos, pos, NoPiece}, nil
 					}
 				} else if str[1] >= '1' && str[1] <= '8' {
-					r, _ := ParsePosition(str[1:1])
+					r, _ := ParsePosition(str[1:2])
 					fromPos, err = b.findAttackingRookFromRank(pos, color, r)
 					if err == nil {
 						return Move{fromPos, pos, NoPiece}, nil
@@ -314,7 +320,10 @@ func (b *Board) MoveFromAlgebraic(str string, color Color) (Move, error) {
 			}
 			fromPos, err := b.findAttackingPawn(pos, color, true)
 			if err == ErrAmbiguousMove {
-				f, _ := ParsePosition(str[0:0])
+				f, err2 := ParsePosition(str[0:1])
+				if err2 != nil {
+					return NilMove, err2
+				}
 				fromPos, err = b.findAttackingPawnFromFile(pos, color, f)
 				if err == nil {
 					return Move{fromPos, pos, promote}, nil
@@ -576,6 +585,7 @@ func (b *Board) SetPiece(pos Position, p Piece) {
 
 func (b Board) GetPiece(p Position) Piece {
 	q := uint64(p)
+	//fmt.Println("get piece at position:", p)
 	switch {
 	case q&b.bPawns != 0:
 		return BlackPawn
@@ -696,13 +706,15 @@ func (b Board) findAttackingPawnFromFile(pos Position, color Color, file Positio
 			b.lastMove.To.RankOrd() == pos.RankOrd()-1 &&
 			b.lastMove.From.RankOrd() == pos.RankOrd()+1 &&
 			b.GetPiece(PositionFromOrd(pos.FileOrd(), pos.RankOrd()-1)) == BlackPawn {
-			if b.GetPiece(PositionFromOrd(file.FileOrd(), pos.RankOrd()-1)) == WhitePawn {
-				retPos = PositionFromOrd(file.FileOrd(), pos.RankOrd()-1)
+			p := Position(file & (pos.Rank() >> 8))
+			if b.GetPiece(p) == WhitePawn {
+				retPos = p
 				count++
 			}
 		}
-		if b.GetPiece(PositionFromOrd(file.FileOrd(), pos.RankOrd()-1)) == WhitePawn {
-			retPos = PositionFromOrd(file.FileOrd(), pos.RankOrd()-1)
+		p := Position(file & (pos.Rank() >> 8))
+		if b.GetPiece(p) == WhitePawn {
+			retPos = p
 			count++
 		}
 	} else {
@@ -711,13 +723,15 @@ func (b Board) findAttackingPawnFromFile(pos Position, color Color, file Positio
 			b.lastMove.To.RankOrd() == pos.RankOrd()+1 &&
 			b.lastMove.From.RankOrd() == pos.RankOrd()-1 &&
 			b.GetPiece(PositionFromOrd(pos.FileOrd(), pos.RankOrd()+1)) == WhitePawn {
-			if b.GetPiece(PositionFromOrd(file.FileOrd(), pos.RankOrd()+1)) == BlackPawn {
-				retPos = PositionFromOrd(file.FileOrd(), pos.RankOrd()+1)
+			p := Position(file & (pos.Rank() << 8))
+			if b.GetPiece(p) == BlackPawn {
+				retPos = p
 				count++
 			}
 		}
-		if b.GetPiece(PositionFromOrd(file.FileOrd(), pos.RankOrd()+1)) == BlackPawn {
-			retPos = PositionFromOrd(file.FileOrd(), pos.RankOrd()+1)
+		p := Position(file & (pos.Rank() << 8))
+		if b.GetPiece(p) == BlackPawn {
+			retPos = p
 			count++
 		}
 	}
@@ -1109,13 +1123,15 @@ func (b Board) positionAttackedBy(pos Position, color Color) bool {
 }
 
 func (b Board) moveIntoCheck(move Move, color Color) bool {
-	fmt.Println("testing move into check", move)
+	//fmt.Println("testing move into check", move)
 	tempb := b
 	tempb.MakeMove(move)
 	if color == White {
+		//	fmt.Println("finding white king")
 		p := tempb.FindKing(White)
 		return tempb.positionAttackedBy(p, Black)
 	} else if color == Black {
+		//	fmt.Println("finding black king")
 		p := tempb.FindKing(Black)
 		return tempb.positionAttackedBy(p, White)
 	}
@@ -1123,8 +1139,8 @@ func (b Board) moveIntoCheck(move Move, color Color) bool {
 }
 
 func (b Board) FindKing(color Color) Position {
-	for r := Rank8.RankOrd(); r >= Rank1.RankOrd(); r-- {
-		for f := FileA.FileOrd(); f <= FileH.FileOrd(); f++ {
+	for r := 0; r <= 7; r++ {
+		for f := 0; f <= 7; f++ {
 			pos := PositionFromOrd(f, r)
 			p := b.GetPiece(pos)
 			if (p == BlackKing || p == WhiteKing) && p.Color() == color {
@@ -1132,5 +1148,6 @@ func (b Board) FindKing(color Color) Position {
 			}
 		}
 	}
+	panic("can't find king")
 	return NoPosition
 }
