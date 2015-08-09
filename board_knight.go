@@ -1,7 +1,5 @@
 package pgn
 
-import "fmt"
-
 type knight struct{}
 
 func (knight) mask(sq Position) (mask Position) {
@@ -139,63 +137,62 @@ func (b Board) findAttackingKnight(pos Position, color Color, check bool) (Posit
 }
 
 func (b Board) findAttackingKnightFromFile(pos Position, color Color, file Position) (Position, error) {
-	fmt.Println("finding attacking knight from file:", pos, color, file)
+	//fmt.Println("finding attacking knight from file:", pos, color, file)
 	count := 0
-	ro := pos.RankOrd()
-	fo := pos.FileOrd()
-	f := pos.File()
+	r := pos.RankOrd()
+	f := pos.FileOrd()
 	retPos := NoPosition
 
-	if f>>1 == file {
-		testPos := PositionFromOrd(fo+1, ro+2)
+	if f+1 == file.FileOrd() {
+		testPos := PositionFromOrd(f+1, r+2)
 		if testPos != NoPosition && b.checkKnightColor(testPos, color) {
 			count++
 			retPos = testPos
 		}
 
-		testPos = PositionFromOrd(fo+1, ro-2)
-		if testPos != NoPosition && b.checkKnightColor(testPos, color) {
-			count++
-			retPos = testPos
-		}
-	}
-
-	if f>>2 == file {
-		testPos := PositionFromOrd(fo+2, ro+1)
-		if testPos != NoPosition && b.checkKnightColor(testPos, color) {
-			count++
-			retPos = testPos
-		}
-
-		testPos = PositionFromOrd(fo+2, ro-1)
+		testPos = PositionFromOrd(f+1, r-2)
 		if testPos != NoPosition && b.checkKnightColor(testPos, color) {
 			count++
 			retPos = testPos
 		}
 	}
 
-	if f<<2 == file {
-		testPos := PositionFromOrd(fo-2, ro-1)
+	if f+2 == file.FileOrd() {
+		testPos := PositionFromOrd(f+2, r+1)
 		if testPos != NoPosition && b.checkKnightColor(testPos, color) {
 			count++
 			retPos = testPos
 		}
 
-		testPos = PositionFromOrd(fo-2, ro+1)
+		testPos = PositionFromOrd(f+2, r-1)
 		if testPos != NoPosition && b.checkKnightColor(testPos, color) {
 			count++
 			retPos = testPos
 		}
 	}
 
-	if f<<1 == file {
-		testPos := PositionFromOrd(fo-1, ro-2)
+	if f-2 == file.FileOrd() {
+		testPos := PositionFromOrd(f-2, r-1)
 		if testPos != NoPosition && b.checkKnightColor(testPos, color) {
 			count++
 			retPos = testPos
 		}
 
-		testPos = PositionFromOrd(fo-1, ro+2)
+		testPos = PositionFromOrd(f-2, r+1)
+		if testPos != NoPosition && b.checkKnightColor(testPos, color) {
+			count++
+			retPos = testPos
+		}
+	}
+
+	if f-1 == file.FileOrd() {
+		testPos := PositionFromOrd(f-1, r-2)
+		if testPos != NoPosition && b.checkKnightColor(testPos, color) {
+			count++
+			retPos = testPos
+		}
+
+		testPos = PositionFromOrd(f-1, r+2)
 		if testPos != NoPosition && b.checkKnightColor(testPos, color) {
 			count++
 			retPos = testPos
@@ -212,7 +209,7 @@ func (b Board) findAttackingKnightFromFile(pos Position, color Color, file Posit
 }
 
 func (b Board) findAttackingKnightFromRank(pos Position, color Color, rank Position) (Position, error) {
-	fmt.Println("finding attacking knight from rank:", rank)
+	//fmt.Println("finding attacking knight from rank:", rank)
 	count := 0
 	r := pos.RankOrd()
 	f := pos.FileOrd()
