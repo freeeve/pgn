@@ -227,7 +227,7 @@ func (b *Board) MoveFromAlgebraic(str string, color Color) (Move, error) {
 			if err != nil {
 				return NilMove, err
 			}
-			fromPos, err := b.findAttackingKnight(pos, color, true)
+			fromPos, err := b.findAttackingKnight(pos, color, false)
 			if err == ErrAmbiguousMove {
 				if str[1] >= 'a' && str[1] <= 'h' {
 					f, err2 := ParsePosition(str[1:2])

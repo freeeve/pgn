@@ -1,6 +1,7 @@
 package pgn
 
 func (b Board) findAttackingRook(pos Position, color Color, check bool) (Position, error) {
+	//fmt.Println("find attacking rook:", pos, color, check)
 	count := 0
 	retPos := NoPosition
 
@@ -23,6 +24,7 @@ func (b Board) findAttackingRook(pos Position, color Color, check bool) (Positio
 	for {
 		f++
 		testPos := PositionFromOrd(f, r)
+		//fmt.Println("find attacking rook f++:", pos, color, check, testPos)
 		if b.checkRookColor(testPos, color) && (!check || !b.moveIntoCheck(Move{testPos, pos, NoPiece}, color)) {
 			retPos = testPos
 			count++
@@ -37,6 +39,7 @@ func (b Board) findAttackingRook(pos Position, color Color, check bool) (Positio
 	for {
 		r++
 		testPos := PositionFromOrd(f, r)
+		//fmt.Println("find attacking rook r++:", pos, color, check, testPos)
 		if b.checkRookColor(testPos, color) && (!check || !b.moveIntoCheck(Move{testPos, pos, NoPiece}, color)) {
 			retPos = testPos
 			count++
@@ -51,11 +54,16 @@ func (b Board) findAttackingRook(pos Position, color Color, check bool) (Positio
 	for {
 		r--
 		testPos := PositionFromOrd(f, r)
+		//fmt.Println("find attacking rook r--:", pos, color, check, testPos)
+		//fmt.Println("find attacking rook r--; checkRookColor:", b.checkRookColor(testPos, color))
+		//fmt.Println("find attacking rook r--; moveintocheck:", !check || !b.moveIntoCheck(Move{testPos, pos, NoPiece}, color))
 		if b.checkRookColor(testPos, color) && (!check || !b.moveIntoCheck(Move{testPos, pos, NoPiece}, color)) {
+			//	fmt.Println("wut r-- if")
 			retPos = testPos
 			count++
 			break
 		} else if testPos == NoPosition || b.containsPieceAt(testPos) {
+			//fmt.Println("wut r-- else if")
 			break
 		}
 	}
