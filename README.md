@@ -4,7 +4,7 @@ pgn
 A pgn parser for golang. This is release v1.
 
 [![Build Status](https://travis-ci.org/freeeve/pgn.png?branch=master)](https://travis-ci.org/freeeve/pgn)
-[![Coverage Status](https://coveralls.io/repos/freeeve/pgn/badge.png?branch=master)](https://coveralls.io/r/freeeve/pgn?branch=master)
+[![Coverage Status](https://coveralls.io/repos/freeeve/pgn/badge.svg?branch=v1&service=github)](https://coveralls.io/github/freeeve/pgn?branch=v1)
 
 Normal go install... `go get gopkg.in/freeeve/pgn.v1`
 
