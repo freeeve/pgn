@@ -1,13 +1,13 @@
 language: go
-go: 
+go:
   - 1.2
-  
+
 before_script:
-  - go get launchpad.net/gocheck
+  - go get gopkg.in/check.v1
 
 before_install:
-  - go get code.google.com/p/go.tools/cmd/cover
-  
+  - go get golang.org/x/tools/cmd/cover
+
 script:
   - go get github.com/axw/gocov/gocov
   - go get github.com/mattn/goveralls
