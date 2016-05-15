@@ -168,3 +168,38 @@ Bf6 24. Ndb1 d2 25. Qc2 Bb3 26. Qxf5 d1=Q 27. Nxd1 Bxd1
 	c.Assert(game.Tags["Site"], Equals, "New York (USA)")
 	c.Assert(len(game.Moves), Equals, 58)
 }
+
+var issue9 = `[Event "TCh-CAT Gp2 2016"]
+[Site "Barcelona ESP"]
+[Date "2016.02.06"]
+[Round "3.3"]
+[White "Montilla Carrillo, Esteban"]
+[Black "Garcia Ramos, Daniel"]
+[Result "0-1"]
+[WhiteElo "2204"]
+[BlackElo "2207"]
+[ECO "A97"]
+[EventDate "2016.01.23"]
+
+1.Nf3 e6 2.c4 f5 3.g3 Nf6 4.Bg2 Be7 5.O-O O-O 6.d4 d6 7.Nc3 Qe8 8.Qd3 Nc6 
+9.Nb5 Bd8 10.d5 Ne5 11.Qb3 Nxf3+ 12.exf3 e5 13.f4 a6 14.Nc3 exf4 15.Bxf4 
+Nh5 16.Rfe1 Qf7 17.Be3 f4 18.Bd4 Bf6 19.Qd1 Bg4 20.Qd2 fxg3 21.hxg3 Bxd4 
+22.Qxd4 Nf6 23.Ne4 Nxe4 24.Rxe4 Bf5 25.Re2 Rfe8 26.Rae1 b6 27.b4 Rxe2 28.
+Rxe2 Re8 29.Re3 h6 30.c5 bxc5 31.bxc5 Rxe3 32.Qxe3 Qf6 33.a3 dxc5 34.Qxc5 
+Qb6 35.Qc3 Kh7 36.Qe5 Qb1+ 37.Kh2 Qc2 38.Qf4 a5 39.g4 Bg6 40.Qd4 Qc1 41.f4
+Qxa3 42.f5 Qd6+ 43.Kh1 Bf7 44.Qe4 Kg8 45.Qc4 Kf8 46.Qb5 a4 47.Qb8+ Be8 48.
+Qa7 Ke7 49.Qd4 Kf7 50.Qe3 Bd7 51.Qc3 a3 52.Qb3 Kf8 53.Qb8+ Ke7 54.Qb3 Be8 
+55.Bf3 Qc5 56.Kg2 Bb5 57.d6+ cxd6 58.Qe6+ Kd8 59.Qg8+ Be8 60.Qxg7 a2 61.
+Qf6+ Kc7 62.Qb2 Qa5 63.Qb7+ Kd8 64.f6 a1=Q 65.Qe7+ Kc8 66.Qb7+ Kd8 67.Qe7+
+Kc8 68.Qxe8+ Qd8 69.Qc6+ Qc7 70.Qe8+ Qd8 71.Bb7+ Kc7 72.Qc6+ Kb8 73.Ba6 
+Qb2+ 74.Kh3 Qbb6 0-1`
+
+func (s *PGNSuite) TestIssue9(c *C) {
+	r := strings.NewReader(issue9)
+	sc := scanner.Scanner{}
+	sc.Init(r)
+	_, err := ParseGame(&sc)
+	if err != nil {
+		c.Fatal(err)
+	}
+}
