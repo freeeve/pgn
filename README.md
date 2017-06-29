@@ -11,6 +11,7 @@ Normal go install... `go get gopkg.in/freeeve/pgn.v1`
 ## test instructions
 
 ```
+go get gopkg.in/check.v1
 go get ./...
 go test
 ```
