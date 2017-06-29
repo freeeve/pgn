@@ -8,6 +8,12 @@ A pgn parser for golang. This is release v1.
 
 Normal go install... `go get gopkg.in/freeeve/pgn.v1`
 
+## test instructions
+
+```
+go test
+``
+
 ## minimum viable snippet
 
 ```Go
@@ -219,3 +225,7 @@ rnb4r/1p2k1pp/3pp3/P4p2/4n3/P3BN2/2P1PPPP/R3KB1R b KQ - 0 13
 ## license
 
 MIT License, see LICENSE file.
+
+## code of conduct
+
+See [Women Who Code DC's CoC](https://github.com/womenwhocodedc/organization/blob/master/code_of_conduct.md)
