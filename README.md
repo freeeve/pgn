@@ -12,7 +12,7 @@ Normal go install... `go get gopkg.in/freeeve/pgn.v1`
 
 ```
 go test
-``
+```
 
 ## minimum viable snippet
 
