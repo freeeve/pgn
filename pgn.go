@@ -78,6 +78,9 @@ func isEnd(str string) bool {
 	if str == "1-0" {
 		return true
 	}
+	if str == "*" {
+		return true
+	}
 	return false
 }
 
