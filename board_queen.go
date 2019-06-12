@@ -13,6 +13,7 @@ func (b Board) findAttackingQueen(pos Position, color Color, check bool) (Positi
 		if b.checkQueenColor(testPos, color) && (!check || !b.moveIntoCheck(Move{testPos, pos, NoPiece}, color)) {
 			retPos = testPos
 			count++
+			break
 		} else if testPos == NoPosition || b.containsPieceAt(testPos) {
 			break
 		}
@@ -26,6 +27,7 @@ func (b Board) findAttackingQueen(pos Position, color Color, check bool) (Positi
 		if b.checkQueenColor(testPos, color) && (!check || !b.moveIntoCheck(Move{testPos, pos, NoPiece}, color)) {
 			retPos = testPos
 			count++
+			break
 		} else if testPos == NoPosition || b.containsPieceAt(testPos) {
 			break
 		}
@@ -39,6 +41,7 @@ func (b Board) findAttackingQueen(pos Position, color Color, check bool) (Positi
 		if b.checkQueenColor(testPos, color) && (!check || !b.moveIntoCheck(Move{testPos, pos, NoPiece}, color)) {
 			retPos = testPos
 			count++
+			break
 		} else if testPos == NoPosition || b.containsPieceAt(testPos) {
 			break
 		}
@@ -52,6 +55,7 @@ func (b Board) findAttackingQueen(pos Position, color Color, check bool) (Positi
 		if b.checkQueenColor(testPos, color) && (!check || !b.moveIntoCheck(Move{testPos, pos, NoPiece}, color)) {
 			retPos = testPos
 			count++
+			break
 		} else if testPos == NoPosition || b.containsPieceAt(testPos) {
 			break
 		}
@@ -67,6 +71,7 @@ func (b Board) findAttackingQueen(pos Position, color Color, check bool) (Positi
 		if b.checkQueenColor(testPos, color) && (!check || !b.moveIntoCheck(Move{testPos, pos, NoPiece}, color)) {
 			retPos = testPos
 			count++
+			break
 		} else if testPos == NoPosition || b.containsPieceAt(testPos) {
 			break
 		}
@@ -81,6 +86,7 @@ func (b Board) findAttackingQueen(pos Position, color Color, check bool) (Positi
 		if b.checkQueenColor(testPos, color) && (!check || !b.moveIntoCheck(Move{testPos, pos, NoPiece}, color)) {
 			retPos = testPos
 			count++
+			break
 		} else if testPos == NoPosition || b.containsPieceAt(testPos) {
 			break
 		}
@@ -95,6 +101,7 @@ func (b Board) findAttackingQueen(pos Position, color Color, check bool) (Positi
 		if b.checkQueenColor(testPos, color) && (!check || !b.moveIntoCheck(Move{testPos, pos, NoPiece}, color)) {
 			retPos = testPos
 			count++
+			break
 		} else if testPos == NoPosition || b.containsPieceAt(testPos) {
 			break
 		}
@@ -109,6 +116,7 @@ func (b Board) findAttackingQueen(pos Position, color Color, check bool) (Positi
 		if b.checkQueenColor(testPos, color) && (!check || !b.moveIntoCheck(Move{testPos, pos, NoPiece}, color)) {
 			retPos = testPos
 			count++
+			break
 		} else if testPos == NoPosition || b.containsPieceAt(testPos) {
 			break
 		}
