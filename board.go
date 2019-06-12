@@ -628,15 +628,12 @@ func (b Board) findAttackingPawn(pos Position, color Color, check bool) (Positio
 				(!check || !b.moveIntoCheck(Move{testPos, pos, NoPiece}, color)) {
 				retPos = testPos
 				count++
-				// TODO remove these breaks
-				break
 			}
 			testPos = PositionFromFileRank(pos.GetFile()-1, pos.GetRank()-1)
 			if b.GetPiece(testPos) == WhitePawn &&
 				(!check || !b.moveIntoCheck(Move{testPos, pos, NoPiece}, color)) {
 				retPos = testPos
 				count++
-				break
 			}
 		}
 		testPos := PositionFromFileRank(pos.GetFile()+1, pos.GetRank()-1)
@@ -713,6 +710,9 @@ func (b Board) findAttackingPawnFromFile(pos Position, color Color, file File) (
 			retPos = PositionFromFileRank(file, pos.GetRank()-1)
 			count++
 		}
+		if count == 2 {
+			count = 1
+		}
 	} else {
 		// special en-passant case
 		if b.lastMove.To.GetFile() == pos.GetFile() &&
@@ -727,6 +727,9 @@ func (b Board) findAttackingPawnFromFile(pos Position, color Color, file File) (
 		if b.GetPiece(PositionFromFileRank(file, pos.GetRank()+1)) == BlackPawn {
 			retPos = PositionFromFileRank(file, pos.GetRank()+1)
 			count++
+		}
+		if count == 2 {
+			count = 1
 		}
 	}
 	if count > 1 {
