@@ -144,35 +144,18 @@ func ParseMoves(s *scanner.Scanner, g *Game) error {
 					return nil
 				}
 			} else if white == "" {
-				white = s.TokenText()
-				for s.Peek() == '-' {
-					s.Scan()
-					white += s.TokenText()
-					s.Scan()
-					white += s.TokenText()
-				}
-				for s.Peek() == '/' {
-					s.Scan()
-					white += s.TokenText()
-					s.Scan()
-					white += s.TokenText()
-					s.Scan()
-					white += s.TokenText()
-					s.Scan()
-					white += s.TokenText()
-					s.Scan()
-					white += s.TokenText()
-					s.Scan()
-					white += s.TokenText()
-				}
+				white = ParseMoveOrResult(s)
 				if isEnd(white) {
 					return nil
 				}
-				if s.Peek() == '=' {
-					s.Scan()
-					white += s.TokenText()
-					s.Scan()
-					white += s.TokenText()
+				for s.Peek() == ' ' {
+					s.Next()
+				}
+				if s.Peek() == '{' {
+					for s.Peek() != '}' {
+						s.Next()
+					}
+					s.Next()
 				}
 				move, err := board.MoveFromAlgebraic(white, White)
 				if err != nil {
@@ -181,36 +164,23 @@ func ParseMoves(s *scanner.Scanner, g *Game) error {
 				}
 				g.Moves = append(g.Moves, move)
 				board.MakeMove(move)
+
+				// Sometimes whites move is followed by the move number and '...'
+				// eg. `1. e4 {long comment} 1... e5
+				for s.Peek() == ' ' {
+					s.Next()
+				}
+				if s.Peek() >= '0' && s.Peek() <= '9' {
+					s.Scan()
+					numReply := ParseMoveOrResult(s)
+					if isEnd(numReply) {
+						return nil
+					}
+				}
 			} else if black == "" {
-				black = s.TokenText()
-				for s.Peek() == '-' {
-					s.Scan()
-					black += s.TokenText()
-					s.Scan()
-					black += s.TokenText()
-				}
-				for s.Peek() == '/' {
-					s.Scan()
-					black += s.TokenText()
-					s.Scan()
-					black += s.TokenText()
-					s.Scan()
-					black += s.TokenText()
-					s.Scan()
-					black += s.TokenText()
-					s.Scan()
-					black += s.TokenText()
-					s.Scan()
-					black += s.TokenText()
-				}
+				black = ParseMoveOrResult(s)
 				if isEnd(black) {
 					return nil
-				}
-				if s.Peek() == '=' {
-					s.Scan()
-					black += s.TokenText()
-					s.Scan()
-					black += s.TokenText()
 				}
 				move, err := board.MoveFromAlgebraic(black, Black)
 				if err != nil {
@@ -227,6 +197,44 @@ func ParseMoves(s *scanner.Scanner, g *Game) error {
 		}
 	}
 	return nil
+}
+
+func ParseMoveOrResult(s *scanner.Scanner) string {
+	result := s.TokenText()
+	for s.Peek() == '-' {
+		s.Scan()
+		result += s.TokenText()
+		s.Scan()
+		result += s.TokenText()
+	}
+	for s.Peek() == '/' {
+		s.Scan()
+		result += s.TokenText()
+		s.Scan()
+		result += s.TokenText()
+		s.Scan()
+		result += s.TokenText()
+		s.Scan()
+		result += s.TokenText()
+		s.Scan()
+		result += s.TokenText()
+		s.Scan()
+		result += s.TokenText()
+	}
+	if s.Peek() == '=' {
+		s.Scan()
+		result += s.TokenText()
+		s.Scan()
+		result += s.TokenText()
+	}
+	for {
+		switch s.Peek() {
+		case '#', '.', '+', '!', '?', '\n', '\r':
+			s.Next()
+		default:
+			return result
+		}
+	}
 }
 
 func NewPGNScanner(r io.Reader) *PGNScanner {
