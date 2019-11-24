@@ -173,7 +173,6 @@ func ParseMoves(s *scanner.Scanner, g *Game) error {
 				}
 				move, err := board.MoveFromAlgebraic(white, White)
 				if err != nil {
-					fmt.Println(board)
 					return err
 				}
 				g.Moves = append(g.Moves, move)
@@ -211,7 +210,6 @@ func ParseMoves(s *scanner.Scanner, g *Game) error {
 				}
 				move, err := board.MoveFromAlgebraic(black, Black)
 				if err != nil {
-					fmt.Println(board)
 					return err
 				}
 				g.Moves = append(g.Moves, move)
