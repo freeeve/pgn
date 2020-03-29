@@ -51,7 +51,7 @@ func ParseTags(s *scanner.Scanner, g *Game) error {
 	run := s.Peek()
 	for run != scanner.EOF {
 		switch run {
-		case '[', ']', '\n', '\r':
+		case '[', ']', '\n', '\r', ' ':
 			run = s.Next()
 		case '0':
 			return nil
