@@ -20,6 +20,7 @@ type Move struct {
 	From    Position
 	To      Position
 	Promote Piece
+	San     string
 }
 
 func (m Move) String() string {

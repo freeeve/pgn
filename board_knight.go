@@ -9,7 +9,7 @@ func (b Board) findAttackingKnight(pos Position, color Color, check bool) (Posit
 	testPos := PositionFromFileRank(f+1, r+2)
 	if testPos != NoPosition &&
 		b.checkKnightColor(testPos, color) &&
-		(!check || !b.moveIntoCheck(Move{testPos, pos, NoPiece}, color)) {
+		(!check || !b.moveIntoCheck(Move{testPos, pos, NoPiece, ""}, color)) {
 		count++
 		retPos = testPos
 	}
@@ -17,7 +17,7 @@ func (b Board) findAttackingKnight(pos Position, color Color, check bool) (Posit
 	testPos = PositionFromFileRank(f+1, r-2)
 	if testPos != NoPosition &&
 		b.checkKnightColor(testPos, color) &&
-		(!check || !b.moveIntoCheck(Move{testPos, pos, NoPiece}, color)) {
+		(!check || !b.moveIntoCheck(Move{testPos, pos, NoPiece, ""}, color)) {
 		count++
 		retPos = testPos
 	}
@@ -25,7 +25,7 @@ func (b Board) findAttackingKnight(pos Position, color Color, check bool) (Posit
 	testPos = PositionFromFileRank(f+2, r+1)
 	if testPos != NoPosition &&
 		b.checkKnightColor(testPos, color) &&
-		(!check || !b.moveIntoCheck(Move{testPos, pos, NoPiece}, color)) {
+		(!check || !b.moveIntoCheck(Move{testPos, pos, NoPiece, ""}, color)) {
 		count++
 		retPos = testPos
 	}
@@ -33,7 +33,7 @@ func (b Board) findAttackingKnight(pos Position, color Color, check bool) (Posit
 	testPos = PositionFromFileRank(f+2, r-1)
 	if testPos != NoPosition &&
 		b.checkKnightColor(testPos, color) &&
-		(!check || !b.moveIntoCheck(Move{testPos, pos, NoPiece}, color)) {
+		(!check || !b.moveIntoCheck(Move{testPos, pos, NoPiece, ""}, color)) {
 		count++
 		retPos = testPos
 	}
@@ -41,7 +41,7 @@ func (b Board) findAttackingKnight(pos Position, color Color, check bool) (Posit
 	testPos = PositionFromFileRank(f-2, r-1)
 	if testPos != NoPosition &&
 		b.checkKnightColor(testPos, color) &&
-		(!check || !b.moveIntoCheck(Move{testPos, pos, NoPiece}, color)) {
+		(!check || !b.moveIntoCheck(Move{testPos, pos, NoPiece, ""}, color)) {
 		count++
 		retPos = testPos
 	}
@@ -49,7 +49,7 @@ func (b Board) findAttackingKnight(pos Position, color Color, check bool) (Posit
 	testPos = PositionFromFileRank(f-2, r+1)
 	if testPos != NoPosition &&
 		b.checkKnightColor(testPos, color) &&
-		(!check || !b.moveIntoCheck(Move{testPos, pos, NoPiece}, color)) {
+		(!check || !b.moveIntoCheck(Move{testPos, pos, NoPiece, ""}, color)) {
 		count++
 		retPos = testPos
 	}
@@ -57,7 +57,7 @@ func (b Board) findAttackingKnight(pos Position, color Color, check bool) (Posit
 	testPos = PositionFromFileRank(f-1, r-2)
 	if testPos != NoPosition &&
 		b.checkKnightColor(testPos, color) &&
-		(!check || !b.moveIntoCheck(Move{testPos, pos, NoPiece}, color)) {
+		(!check || !b.moveIntoCheck(Move{testPos, pos, NoPiece, ""}, color)) {
 		count++
 		retPos = testPos
 	}
@@ -65,7 +65,7 @@ func (b Board) findAttackingKnight(pos Position, color Color, check bool) (Posit
 	testPos = PositionFromFileRank(f-1, r+2)
 	if testPos != NoPosition &&
 		b.checkKnightColor(testPos, color) &&
-		(!check || !b.moveIntoCheck(Move{testPos, pos, NoPiece}, color)) {
+		(!check || !b.moveIntoCheck(Move{testPos, pos, NoPiece, ""}, color)) {
 		count++
 		retPos = testPos
 	}

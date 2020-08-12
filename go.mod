@@ -1,4 +1,4 @@
-module github.com/shric/pgn
+module github.com/jvsteiner/pgn
 
 go 1.14
 
