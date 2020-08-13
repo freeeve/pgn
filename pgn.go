@@ -20,6 +20,7 @@ type Move struct {
 	From    Position
 	To      Position
 	Promote Piece
+	San     string
 }
 
 func (m Move) String() string {
@@ -51,8 +52,10 @@ func ParseTags(s *scanner.Scanner, g *Game) error {
 	run := s.Peek()
 	for run != scanner.EOF {
 		switch run {
-		case '[', ']', '\n', '\r':
+		case '[', ']', '\n', '\r', ' ':
 			run = s.Next()
+		case '0':
+			return nil
 		case '1':
 			return nil
 		default:
@@ -159,7 +162,6 @@ func ParseMoves(s *scanner.Scanner, g *Game) error {
 				}
 				move, err := board.MoveFromAlgebraic(white, White)
 				if err != nil {
-					fmt.Println(board)
 					return err
 				}
 				g.Moves = append(g.Moves, move)
@@ -184,7 +186,6 @@ func ParseMoves(s *scanner.Scanner, g *Game) error {
 				}
 				move, err := board.MoveFromAlgebraic(black, Black)
 				if err != nil {
-					fmt.Println(board)
 					return err
 				}
 				g.Moves = append(g.Moves, move)

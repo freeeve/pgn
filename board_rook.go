@@ -9,7 +9,7 @@ func (b Board) findAttackingRook(pos Position, color Color, check bool) (Positio
 	for {
 		f--
 		testPos := PositionFromFileRank(f, r)
-		if b.checkRookColor(testPos, color) && (!check || !b.moveIntoCheck(Move{testPos, pos, NoPiece}, color)) {
+		if b.checkRookColor(testPos, color) && (!check || !b.moveIntoCheck(Move{testPos, pos, NoPiece, ""}, color)) {
 			retPos = testPos
 			count++
 			break
@@ -23,7 +23,7 @@ func (b Board) findAttackingRook(pos Position, color Color, check bool) (Positio
 	for {
 		f++
 		testPos := PositionFromFileRank(f, r)
-		if b.checkRookColor(testPos, color) && (!check || !b.moveIntoCheck(Move{testPos, pos, NoPiece}, color)) {
+		if b.checkRookColor(testPos, color) && (!check || !b.moveIntoCheck(Move{testPos, pos, NoPiece, ""}, color)) {
 			retPos = testPos
 			count++
 			break
@@ -37,7 +37,7 @@ func (b Board) findAttackingRook(pos Position, color Color, check bool) (Positio
 	for {
 		r++
 		testPos := PositionFromFileRank(f, r)
-		if b.checkRookColor(testPos, color) && (!check || !b.moveIntoCheck(Move{testPos, pos, NoPiece}, color)) {
+		if b.checkRookColor(testPos, color) && (!check || !b.moveIntoCheck(Move{testPos, pos, NoPiece, ""}, color)) {
 			retPos = testPos
 			count++
 			break
@@ -51,7 +51,7 @@ func (b Board) findAttackingRook(pos Position, color Color, check bool) (Positio
 	for {
 		r--
 		testPos := PositionFromFileRank(f, r)
-		if b.checkRookColor(testPos, color) && (!check || !b.moveIntoCheck(Move{testPos, pos, NoPiece}, color)) {
+		if b.checkRookColor(testPos, color) && (!check || !b.moveIntoCheck(Move{testPos, pos, NoPiece, ""}, color)) {
 			retPos = testPos
 			count++
 			break

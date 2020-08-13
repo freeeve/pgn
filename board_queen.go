@@ -10,7 +10,7 @@ func (b Board) findAttackingQueen(pos Position, color Color, check bool) (Positi
 	for {
 		f--
 		testPos := PositionFromFileRank(f, r)
-		if b.checkQueenColor(testPos, color) && (!check || !b.moveIntoCheck(Move{testPos, pos, NoPiece}, color)) {
+		if b.checkQueenColor(testPos, color) && (!check || !b.moveIntoCheck(Move{testPos, pos, NoPiece, ""}, color)) {
 			retPos = testPos
 			count++
 			break
@@ -24,7 +24,7 @@ func (b Board) findAttackingQueen(pos Position, color Color, check bool) (Positi
 	for {
 		f++
 		testPos := PositionFromFileRank(f, r)
-		if b.checkQueenColor(testPos, color) && (!check || !b.moveIntoCheck(Move{testPos, pos, NoPiece}, color)) {
+		if b.checkQueenColor(testPos, color) && (!check || !b.moveIntoCheck(Move{testPos, pos, NoPiece, ""}, color)) {
 			retPos = testPos
 			count++
 			break
@@ -38,7 +38,7 @@ func (b Board) findAttackingQueen(pos Position, color Color, check bool) (Positi
 	for {
 		r++
 		testPos := PositionFromFileRank(f, r)
-		if b.checkQueenColor(testPos, color) && (!check || !b.moveIntoCheck(Move{testPos, pos, NoPiece}, color)) {
+		if b.checkQueenColor(testPos, color) && (!check || !b.moveIntoCheck(Move{testPos, pos, NoPiece, ""}, color)) {
 			retPos = testPos
 			count++
 			break
@@ -52,7 +52,7 @@ func (b Board) findAttackingQueen(pos Position, color Color, check bool) (Positi
 	for {
 		r--
 		testPos := PositionFromFileRank(f, r)
-		if b.checkQueenColor(testPos, color) && (!check || !b.moveIntoCheck(Move{testPos, pos, NoPiece}, color)) {
+		if b.checkQueenColor(testPos, color) && (!check || !b.moveIntoCheck(Move{testPos, pos, NoPiece, ""}, color)) {
 			retPos = testPos
 			count++
 			break
@@ -68,7 +68,7 @@ func (b Board) findAttackingQueen(pos Position, color Color, check bool) (Positi
 		f--
 		r--
 		testPos := PositionFromFileRank(f, r)
-		if b.checkQueenColor(testPos, color) && (!check || !b.moveIntoCheck(Move{testPos, pos, NoPiece}, color)) {
+		if b.checkQueenColor(testPos, color) && (!check || !b.moveIntoCheck(Move{testPos, pos, NoPiece, ""}, color)) {
 			retPos = testPos
 			count++
 			break
@@ -83,7 +83,7 @@ func (b Board) findAttackingQueen(pos Position, color Color, check bool) (Positi
 		f--
 		r++
 		testPos := PositionFromFileRank(f, r)
-		if b.checkQueenColor(testPos, color) && (!check || !b.moveIntoCheck(Move{testPos, pos, NoPiece}, color)) {
+		if b.checkQueenColor(testPos, color) && (!check || !b.moveIntoCheck(Move{testPos, pos, NoPiece, ""}, color)) {
 			retPos = testPos
 			count++
 			break
@@ -98,7 +98,7 @@ func (b Board) findAttackingQueen(pos Position, color Color, check bool) (Positi
 		f++
 		r++
 		testPos := PositionFromFileRank(f, r)
-		if b.checkQueenColor(testPos, color) && (!check || !b.moveIntoCheck(Move{testPos, pos, NoPiece}, color)) {
+		if b.checkQueenColor(testPos, color) && (!check || !b.moveIntoCheck(Move{testPos, pos, NoPiece, ""}, color)) {
 			retPos = testPos
 			count++
 			break
@@ -113,7 +113,7 @@ func (b Board) findAttackingQueen(pos Position, color Color, check bool) (Positi
 		f++
 		r--
 		testPos := PositionFromFileRank(f, r)
-		if b.checkQueenColor(testPos, color) && (!check || !b.moveIntoCheck(Move{testPos, pos, NoPiece}, color)) {
+		if b.checkQueenColor(testPos, color) && (!check || !b.moveIntoCheck(Move{testPos, pos, NoPiece, ""}, color)) {
 			retPos = testPos
 			count++
 			break
