@@ -32,3 +32,23 @@ func (s *BoardSuite) TestBoardMoveFromAlgebraicWhitePawnTakesPromoteQueen(c *C) 
 	c.Assert(move.To, Equals, A8)
 	c.Assert(move.Promote, Equals, BlackQueen)
 }
+
+func (s *BoardSuite) TestBoardMoveFromAlgebraicBlackPawnTakesEnPassant(c *C) {
+	b, err := NewBoardFEN("rnbqkbnr/ppp1pppp/8/4P3/2Pp4/8/PP1P1PPP/RNBQKBNR b KQkq c3 0 3")
+	c.Assert(err, IsNil)
+	move, err := b.MoveFromAlgebraic("dxc3", Black)
+	c.Assert(err, IsNil)
+	c.Assert(move.From, Equals, D4)
+	c.Assert(move.To, Equals, C3)
+	c.Assert(move.San, Equals, "dxc3")
+}
+
+func (s *BoardSuite) TestBoardMoveFromAlgebraicWhitePawnTakesEnPassant(c *C) {
+	b, err := NewBoardFEN("rnbqkbnr/pppp1pp1/8/4p1Pp/8/8/PPPPPP1P/RNBQKBNR w KQkq h6 0 3")
+	c.Assert(err, IsNil)
+	move, err := b.MoveFromAlgebraic("gxh6", White)
+	c.Assert(err, IsNil)
+	c.Assert(move.From, Equals, G5)
+	c.Assert(move.To, Equals, H6)
+	c.Assert(move.San, Equals, "gxh6")
+}

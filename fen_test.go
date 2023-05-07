@@ -49,3 +49,8 @@ func (s *FENSuite) TestParseNoBlackCastle(c *C) {
 	c.Assert(fen.HalfmoveClock, Equals, 1)
 	c.Assert(fen.Fullmove, Equals, 6)
 }
+
+func (s *FENSuite) TestParseInvalidEnPassant(c *C) {
+	_, err := ParseFEN("rnbqkbnr/pppp2pp/4p3/4Pp2/8/8/PPPP1PPP/RNBQKBNR w KQkq f5 0 3")
+	c.Assert(err, ErrorMatches, "pgn: invalid en passant target square")
+}

@@ -353,6 +353,25 @@ func NewBoardFEN(fen string) (*Board, error) {
 	b.toMove = f.ToMove
 	b.wCastle = f.WhiteCastleStatus
 	b.bCastle = f.BlackCastleStatus
+
+	// if there is a square in the FEN that is vulnerable to en passant, we have set it as b.lastMove.
+	//  otherwise, it is not possible to capture the pawn by en passant in the next move.
+	if f.EnPassantVulnerable != NoPosition {
+		var fromPosition Position
+		var toPosition Position
+		file := f.EnPassantVulnerable.GetFile()
+		rank := f.EnPassantVulnerable.GetRank()
+		if rank == Rank3 {
+			fromPosition = PositionFromFileRank(file, Rank2)
+			toPosition = PositionFromFileRank(file, Rank4)
+		} else {
+			// ParseFEN guarantees that rank is 3 or 6
+			fromPosition = PositionFromFileRank(file, Rank7)
+			toPosition = PositionFromFileRank(file, Rank5)
+		}
+		b.lastMove = Move{fromPosition, toPosition, NoPiece, f.EnPassantVulnerable.String()}
+	}
+
 	b.fullmove = f.Fullmove
 	b.halfmoveClock = f.HalfmoveClock
 
