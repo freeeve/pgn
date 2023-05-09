@@ -72,6 +72,10 @@ func ParseFEN(fenstr string) (*FEN, error) {
 		if err != nil {
 			return nil, err
 		}
+		rank := fen.EnPassantVulnerable.GetRank()
+		if rank != Rank3 && rank != Rank6 {
+			return nil, errors.New("pgn: invalid en passant target square")
+		}
 	}
 	return &fen, nil
 }
