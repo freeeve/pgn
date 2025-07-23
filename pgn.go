@@ -5,6 +5,7 @@ import (
 	"io"
 	"strings"
 	"text/scanner"
+	"unicode"
 )
 
 type PGNScanner struct {
@@ -169,7 +170,7 @@ func ParseMoves(s *scanner.Scanner, g *Game) error {
 
 				// Sometimes whites move is followed by the move number and '...'
 				// eg. `1. e4 {long comment} 1... e5
-				for s.Peek() == ' ' {
+				for unicode.IsSpace(s.Peek()) {
 					s.Next()
 				}
 				if s.Peek() >= '0' && s.Peek() <= '9' {

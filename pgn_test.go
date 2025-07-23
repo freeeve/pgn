@@ -216,3 +216,81 @@ func (s *PGNSuite) TestIssue14(c *C) {
 		c.Fatal(err)
 	}
 }
+
+func TestParseGame_chessdotcom(t *testing.T) {
+	pgnstr := `[Event "?"]
+[Site "?"]
+[Date "????.??.??"]
+[Round "?"]
+[White "?"]
+[Black "?"]
+[Result "1/2-1/2"]
+[TimeControl "300+5"]
+[Link "https://www.chess.com/game/computer/216266413"]
+
+1. e4 {1.e4 is the only way to start the game $1} 1... Nc6 {I wonder how many
+pieces I can give away before I can attack your king $2} 2. Nf3 f5 {I believe you
+are going to pay for not respecting my attack $1} 3. exf5 {The first of many
+captures that lead to an attack on your king $1} 3... Nf6 4. d4 g6 5. fxg6 e6 6.
+gxh7 Nxh7 7. Nc3 Qf6 8. Be3 Qg6 9. Bd3 Qg7 10. Bxh7 Qxh7 11. O-O Qh5 12. h3 Bg7
+13. Qe2 Rh7 14. Rfe1 Rb8 15. Rad1 {I think I have given away too much material $1}
+15... Bh8 16. d5 Kf7 17. dxc6 bxc6 18. a4 Bxc3 19. bxc3 a5 20. c4 Rb2 21. Bd4
+Rb8 22. Ne5+ {Hey $1 I'm the one who is supposed to be attacking $1} 22... Kg8 23.
+Qxh5 {Hey $1 I need my queen to attack you $1} 23... Rxh5 {No queen for you makes my
+attacking chances more attractive :)} 24. c5 Rb7 25. Ng6 Kf7 26. Nf4 Rf5 27. Nd3
+Kg8 28. Kf1 Kf8 29. Re3 Ke8 30. Ke2 d5 31. Rf3 Rb8 32. Rxf5 exf5 33. Ne5 Kf8 34.
+Nxc6 Ra8 35. Bc3 Ba6+ {I love attacking the king $1} 36. Kf3 Bb7 37. Nxa5 Rxa5 38.
+Bxa5 c6 39. Bd2 Ba8 40. Bh6+ Ke8 41. Kf4 Kd7 42. Kxf5 Kc8 43. a5 Kc7 44. Ra1 Bb7
+45. h4 Bc8+ 46. Kg6 Bf5+ 47. Kxf5 Kd7 48. g4 Kd8 49. h5 Kc8 50. Kf6 Kd8 51. g5
+d4 52. g6 d3 53. g7 dxc2 54. Rc1 Kc8 55. Rxc2 Kb8 56. g8=Q+ {I hate it when the
+tables get turned and I am getting attacked.} 56... Kb7 57. Ra2 Ka7 58. a6 {What
+a battle $1 Want to play another $2} 1/2-1/2`
+
+	r := strings.NewReader(pgnstr)
+	sc := scanner.Scanner{}
+	sc.Init(r)
+	game, err := ParseGame(&sc)
+	if err != nil {
+		t.Errorf("ParseGame() error = %v", err)
+	}
+
+	if game == nil {
+		t.Errorf("ParseGame() game is nil")
+	}
+
+	if game.Moves == nil {
+		t.Errorf("game.Moves() is nil")
+	}
+
+	for _, move := range game.Moves {
+		fmt.Println(move.String())
+	}
+
+	//c.Assert(game.Tags["Site"], Equals, "New York (USA)")
+	//c.Assert(len(game.Moves), Equals, 58)
+}
+
+func TestParseGame_chessdotcom2(t *testing.T) {
+	pgnstr := `1. e4 {[%clk 0:15:09.9]} 1... Nc6 {[%clk 0:15:06.6]} 2. Nf3 {[%clk 0:15:15.1]} 2... e5 {[%clk 0:15:02.9]} 3. Bc4 {[%clk 0:15:16.9]} 3... h6 {[%clk 0:14:39.1]} 4. d4 {[%clk 0:15:23.1]} 4... exd4 {[%clk 0:14:30.7]} 5. Nxd4 {[%clk 0:15:29.1]} 5... Bc5 {[%clk 0:14:19]} 6. c3 {[%clk 0:15:06.4]} 6... Qe7 {[%clk 0:14:17.3]} 7. Qf3 {[%clk 0:14:48]} 7... Nf6 {[%clk 0:14:22.9]} 8. O-O {[%clk 0:14:49.9]} 8... Qxe4 {[%clk 0:14:00.9]} 9. Qxe4+ {[%clk 0:14:51]} 9... Nxe4 {[%clk 0:14:07.7]} 10. Re1 {[%clk 0:15:00.2]} 10... f5 {[%clk 0:13:48.3]} 11. f3 {[%clk 0:14:47.9]} 11... Bxd4+ {[%clk 0:12:38.1]} 12. cxd4 {[%clk 0:14:57.8]} 12... Nxd4 {[%clk 0:12:47]} 1-0`
+	r := strings.NewReader(pgnstr)
+	sc := scanner.Scanner{}
+	sc.Init(r)
+	game, err := ParseGame(&sc)
+	if err != nil {
+		t.Errorf("ParseGame() error = %v", err)
+	}
+
+	if game == nil {
+		t.Errorf("ParseGame() game is nil")
+	}
+
+	if game.Moves == nil {
+		t.Errorf("game.Moves() is nil")
+	}
+
+	for _, move := range game.Moves {
+		fmt.Println(move.String())
+	}
+	//c.Assert(game.Tags["Site"], Equals, "New York (USA)")
+	//c.Assert(len(game.Moves), Equals, 58)
+}
