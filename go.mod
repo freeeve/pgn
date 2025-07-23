@@ -1,4 +1,4 @@
-module github.com/fin0/pgn
+module github.com/freeeve/pgn
 
 go 1.14
 
