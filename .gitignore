@@ -1,2 +1,7 @@
 .DS_Store
 *.swp
+*.pgn
+*.pgn.zst
+*.test
+coverage.out
+*.prof

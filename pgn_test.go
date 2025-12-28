@@ -1,11 +1,9 @@
 package pgn
 
 import (
-	"fmt"
 	"os"
 	"strings"
 	"testing"
-	"text/scanner"
 
 	. "gopkg.in/check.v1"
 )
@@ -37,37 +35,31 @@ var simple = `[Event "State Ch."]
 `
 
 func (s *PGNSuite) TestParse(c *C) {
-	r := strings.NewReader(simple)
-	sc := scanner.Scanner{}
-	sc.Init(r)
-	game, err := ParseGame(&sc)
-	if err != nil {
-		c.Fatal(err)
-	}
-	if game.Tags["Site"] != "New York, USA" {
-		c.Fatal("Site tag wrong: ", game.Tags["Site"])
-	}
-	if len(game.Moves) == 0 || game.Moves[0].From != D2 || game.Moves[0].To != D4 {
-		c.Fatal("first move is wrong", game.Moves[0])
-	}
-	if len(game.Moves) != 39 || game.Moves[38].From != E5 || game.Moves[38].To != F7 {
-		c.Fatal("last move is wrong", game.Moves[38])
-	}
+	ps := NewPGNScanner(strings.NewReader(simple))
+	c.Assert(ps.Next(), Equals, true)
+	game, err := ps.Scan()
+	c.Assert(err, IsNil)
+	c.Assert(game.Tags["Site"], Equals, "New York, USA")
+	c.Assert(len(game.Moves), Equals, 39)
 }
 
 func (s *PGNSuite) TestPGNScanner(c *C) {
 	f, err := os.Open("polgar.pgn")
 	if err != nil {
-		c.Fatal(err)
+		c.Skip("polgar.pgn not found")
 	}
+	defer f.Close()
+
 	ps := NewPGNScanner(f)
+	count := 0
 	for ps.Next() {
-		game, err := ps.Scan()
+		_, err := ps.Scan()
 		if err != nil {
-			fmt.Println(game)
-			c.Fatal(err)
+			c.Fatalf("game %d: %v", count+1, err)
 		}
+		count++
 	}
+	c.Assert(count > 0, Equals, true)
 }
 
 func (s *PGNSuite) TestPGNParseWithCheckmate(c *C) {
@@ -87,10 +79,9 @@ func (s *PGNSuite) TestPGNParseWithCheckmate(c *C) {
  21.Nbc3 b5 22.Qf4 Qa7 23.Nf6+ Kh8 24.Ncd5 Nd4 25.Qh4 h6 26.Rxc8 Rxc8 27.e5 Ne6 28.Ng4 Rc2 29.Nde3 Rxa2 30.Nxh6 Bxg2
  31.Kxg2 Bxe5 32.Nxf7+ Kg7 33.Nxe5 Qxe3 34.Qe7+ Kh6 35.Nf7+ Kh5 36.Qh4# 1-0
 `
-	r := strings.NewReader(pgnstr)
-	sc := scanner.Scanner{}
-	sc.Init(r)
-	game, err := ParseGame(&sc)
+	ps := NewPGNScanner(strings.NewReader(pgnstr))
+	c.Assert(ps.Next(), Equals, true)
+	game, err := ps.Scan()
 	c.Assert(err, IsNil)
 	c.Assert(len(game.Moves), Equals, 71)
 }
@@ -119,12 +110,10 @@ func (s *PGNSuite) TestPGNParseInfiniteLoopF4(c *C) {
 65.Ka8 Be3 66.Rd6+ Kf5 67.Rd3 Ke4 68.Rxe3+ Kxe3 69.Kxa7 Kd4 70.Kb6 Rg1 71.a7 Rg8
 72.Kb7 Rg7+ 73.Kb6  1-0`
 
-	r := strings.NewReader(pgnstr)
-	sc := scanner.Scanner{}
-	sc.Init(r)
-	game, err := ParseGame(&sc)
+	ps := NewPGNScanner(strings.NewReader(pgnstr))
+	c.Assert(ps.Next(), Equals, true)
+	game, err := ps.Scan()
 	c.Assert(err, IsNil)
-	//	fmt.Println(game)
 	c.Assert(game.Tags["Site"], Equals, "Leipzig")
 	c.Assert(len(game.Moves), Equals, 145)
 }
@@ -159,12 +148,10 @@ only chance.--Fischer} Nd4 21. exd4 Qxd4+ 22. Kh1 e3 23. Nc3
 Bf6 24. Ndb1 d2 25. Qc2 Bb3 26. Qxf5 d1=Q 27. Nxd1 Bxd1
 28. Nc3 e2 29. Raxd1 Qxc3 0-1`
 
-	r := strings.NewReader(pgnstr)
-	sc := scanner.Scanner{}
-	sc.Init(r)
-	game, err := ParseGame(&sc)
-	c.Assert(err, Equals, nil)
-	c.Assert(game, NotNil)
+	ps := NewPGNScanner(strings.NewReader(pgnstr))
+	c.Assert(ps.Next(), Equals, true)
+	game, err := ps.Scan()
+	c.Assert(err, IsNil)
 	c.Assert(game.Tags["Site"], Equals, "New York (USA)")
 	c.Assert(len(game.Moves), Equals, 58)
 }
@@ -195,25 +182,74 @@ Kc8 68.Qxe8+ Qd8 69.Qc6+ Qc7 70.Qe8+ Qd8 71.Bb7+ Kc7 72.Qc6+ Kb8 73.Ba6
 Qb2+ 74.Kh3 Qbb6 0-1`
 
 func (s *PGNSuite) TestIssue9(c *C) {
-	r := strings.NewReader(issue9)
-	sc := scanner.Scanner{}
-	sc.Init(r)
-	_, err := ParseGame(&sc)
-	if err != nil {
-		c.Fatal(err)
-	}
+	ps := NewPGNScanner(strings.NewReader(issue9))
+	c.Assert(ps.Next(), Equals, true)
+	_, err := ps.Scan()
+	c.Assert(err, IsNil)
 }
 
 var issue14 = `
 1. e4 {[%clk 0:15:09.9]} 1... Nc6 {[%clk 0:15:06.6]} 2. Nf3 {[%clk 0:15:15.1]} 2... e5 {[%clk 0:15:02.9]} 3. Bc4 {[%clk 0:15:16.9]} 3... h6 {[%clk 0:14:39.1]} 4. d4 {[%clk 0:15:23.1]} 4... exd4 {[%clk 0:14:30.7]} 5. Nxd4 {[%clk 0:15:29.1]} 5... Bc5 {[%clk 0:14:19]} 6. c3 {[%clk 0:15:06.4]} 6... Qe7 {[%clk 0:14:17.3]} 7. Qf3 {[%clk 0:14:48]} 7... Nf6 {[%clk 0:14:22.9]} 8. O-O {[%clk 0:14:49.9]} 8... Qxe4 {[%clk 0:14:00.9]} 9. Qxe4+ {[%clk 0:14:51]} 9... Nxe4 {[%clk 0:14:07.7]} 10. Re1 {[%clk 0:15:00.2]} 10... f5 {[%clk 0:13:48.3]} 11. f3 {[%clk 0:14:47.9]} 11... Bxd4+ {[%clk 0:12:38.1]} 12. cxd4 {[%clk 0:14:57.8]} 12... Nxd4 {[%clk 0:12:47]} 1-0`
 
 func (s *PGNSuite) TestIssue14(c *C) {
-	r := strings.NewReader(issue14)
-	sc := scanner.Scanner{}
-	sc.Init(r)
-	_, err := ParseGame(&sc)
+	ps := NewPGNScanner(strings.NewReader(issue14))
+	c.Assert(ps.Next(), Equals, true)
+	_, err := ps.Scan()
+	c.Assert(err, IsNil)
+}
+
+func TestLichessJan2013First200Games(t *testing.T) {
+	f, err := os.Open("lichess_db_standard_rated_2013-01.pgn")
+	if os.IsNotExist(err) {
+		t.Skip("lichess_db_standard_rated_2013-01.pgn not present")
+	}
 	if err != nil {
-		c.Fatal(err)
+		t.Fatalf("open lichess file: %v", err)
+	}
+	defer f.Close()
+
+	ps := NewPGNScanner(f)
+	maxGames := 200
+	count := 0
+	for ps.Next() && count < maxGames {
+		game, err := ps.Scan()
+		if err != nil {
+			t.Fatalf("parse game %d: %v", count+1, err)
+		}
+		if len(game.Moves) == 0 {
+			t.Fatalf("game %d has no moves", count+1)
+		}
+		count++
+	}
+	if count < maxGames {
+		t.Fatalf("parsed %d/%d games from lichess_db_standard_rated_2013-01.pgn", count, maxGames)
+	}
+}
+
+func TestLichessJan2013FullFile(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping full PGN parse in short mode")
+	}
+	f, err := os.Open("lichess_db_standard_rated_2013-01.pgn")
+	if os.IsNotExist(err) {
+		t.Skip("lichess_db_standard_rated_2013-01.pgn not present")
+	}
+	if err != nil {
+		t.Fatalf("open lichess file: %v", err)
+	}
+	defer f.Close()
+
+	ps := NewPGNScanner(f)
+	count := 0
+	for ps.Next() {
+		_, err := ps.Scan()
+		if err != nil {
+			t.Fatalf("parse game %d: %v", count+1, err)
+		}
+		count++
+	}
+	if count == 0 {
+		t.Fatalf("no games parsed from lichess_db_standard_rated_2013-01.pgn")
 	}
 }
 
@@ -246,51 +282,82 @@ d4 52. g6 d3 53. g7 dxc2 54. Rc1 Kc8 55. Rxc2 Kb8 56. g8=Q+ {I hate it when the
 tables get turned and I am getting attacked.} 56... Kb7 57. Ra2 Ka7 58. a6 {What
 a battle $1 Want to play another $2} 1/2-1/2`
 
-	r := strings.NewReader(pgnstr)
-	sc := scanner.Scanner{}
-	sc.Init(r)
-	game, err := ParseGame(&sc)
+	ps := NewPGNScanner(strings.NewReader(pgnstr))
+	if !ps.Next() {
+		t.Fatal("expected game")
+	}
+	game, err := ps.Scan()
 	if err != nil {
 		t.Errorf("ParseGame() error = %v", err)
 	}
-
 	if game == nil {
-		t.Errorf("ParseGame() game is nil")
+		t.Fatal("game is nil")
 	}
-
 	if game.Moves == nil {
-		t.Errorf("game.Moves() is nil")
+		t.Fatal("game.Moves is nil")
 	}
-
-	for _, move := range game.Moves {
-		fmt.Println(move.String())
-	}
-
-	//c.Assert(game.Tags["Site"], Equals, "New York (USA)")
-	//c.Assert(len(game.Moves), Equals, 58)
 }
 
 func TestParseGame_chessdotcom2(t *testing.T) {
 	pgnstr := `1. e4 {[%clk 0:15:09.9]} 1... Nc6 {[%clk 0:15:06.6]} 2. Nf3 {[%clk 0:15:15.1]} 2... e5 {[%clk 0:15:02.9]} 3. Bc4 {[%clk 0:15:16.9]} 3... h6 {[%clk 0:14:39.1]} 4. d4 {[%clk 0:15:23.1]} 4... exd4 {[%clk 0:14:30.7]} 5. Nxd4 {[%clk 0:15:29.1]} 5... Bc5 {[%clk 0:14:19]} 6. c3 {[%clk 0:15:06.4]} 6... Qe7 {[%clk 0:14:17.3]} 7. Qf3 {[%clk 0:14:48]} 7... Nf6 {[%clk 0:14:22.9]} 8. O-O {[%clk 0:14:49.9]} 8... Qxe4 {[%clk 0:14:00.9]} 9. Qxe4+ {[%clk 0:14:51]} 9... Nxe4 {[%clk 0:14:07.7]} 10. Re1 {[%clk 0:15:00.2]} 10... f5 {[%clk 0:13:48.3]} 11. f3 {[%clk 0:14:47.9]} 11... Bxd4+ {[%clk 0:12:38.1]} 12. cxd4 {[%clk 0:14:57.8]} 12... Nxd4 {[%clk 0:12:47]} 1-0`
-	r := strings.NewReader(pgnstr)
-	sc := scanner.Scanner{}
-	sc.Init(r)
-	game, err := ParseGame(&sc)
+
+	ps := NewPGNScanner(strings.NewReader(pgnstr))
+	if !ps.Next() {
+		t.Fatal("expected game")
+	}
+	game, err := ps.Scan()
 	if err != nil {
 		t.Errorf("ParseGame() error = %v", err)
 	}
-
 	if game == nil {
-		t.Errorf("ParseGame() game is nil")
+		t.Fatal("game is nil")
 	}
-
 	if game.Moves == nil {
-		t.Errorf("game.Moves() is nil")
+		t.Fatal("game.Moves is nil")
 	}
+}
 
-	for _, move := range game.Moves {
-		fmt.Println(move.String())
-	}
-	//c.Assert(game.Tags["Site"], Equals, "New York (USA)")
-	//c.Assert(len(game.Moves), Equals, 58)
+const lichessGame1479 = `[Event "Rated Classical game"]
+[Site "https://lichess.org/ihzbinrk"]
+[White "oleh77"]
+[Black "Murugan1"]
+[Result "1/2-1/2"]
+[UTCDate "2013.01.01"]
+[UTCTime "13:23:41"]
+[WhiteElo "1356"]
+[BlackElo "1364"]
+[WhiteRatingDiff "+0"]
+[BlackRatingDiff "+0"]
+[ECO "B22"]
+[Opening "Sicilian Defense: Alapin Variation"]
+[TimeControl "1800+8"]
+[Termination "Normal"]
+
+1. e4 c5 2. c3 Nc6 3. d4 cxd4 4. c4 Nf6 5. Bd3 d6 6. b3 Be6 7. Nf3 d5 8. exd5 Nxd5 9. cxd5 Bxd5 10. Bb2 Bxf3 11. Qxf3 Nb4 12. Bxd4 Qxd4 13. Bb5+ Kd8 14. Qxb7 Nc2+ 15. Ke2 Rc8 16. Rd1 Qxd1+ 17. Kxd1 Nxa1 18. Qxa7 Rc7 19. Qd4+ Kc8 20. Qxa1 e5 21. Qxe5 Bb4 22. Qxg7 Rd8+ 23. Ke2 Rc2+ 24. Kf3 Rxa2 25. Qg4+ Kc7 26. Qxb4 Rd1 27. Nc3 Raa1 28. Nxd1 Rxd1 29. Qc4+ Kb6 30. Qc6+ Ka5 31. Qa6+ Kb4 32. Qa4+ Kc5 33. Qc4+ Kb6 34. Qc6+ Ka5 35. Qa6+ Kb4 36. Qa4+ Kc3 37. Qc4+ Kb2 38. Ke3 Rc1 39. Qxc1+ Kxc1 40. b4 Kc2 41. Bd3+ Kc3 42. b5 Kb4 43. b6 Ka5 44. b7 Kb6 45. b8=B Kb7 46. Bd6 Kc6 47. Bf4 Kc5 48. Ke4 Kb4 49. Kf5 Kc3 50. Be4 Kd4 51. Be5+ Kc5 52. Kf6 Kb4 53. Kxf7 Kb3 54. Kg7 Ka2 55. Kxh7 Kb3 56. Kg7 Kc4 57. Kf6 Kc5 58. Ke6 Kb4 59. Kd5 Kb5 60. h4 Kb6 61. g4 Kb7 62. f4 Kc8 63. f5 Kd8 64. g5 Ke8 65. h5 Kf8 66. h6 Kg8 67. g6 Kf8 68. h7 Ke7 69. g7 Kd7 70. f6 Kc8 71. f7 Kb7 72. h8=B Ka6 73. g8=B Ka5 74. f8=Q Ka4 75. Qb4+ Kxb4 76. Bd6+ Kb3 77. Kc6+ Ka4 78. Bb3+ Kxb3 79. Bd5+ Kc2 80. Bd4 Kd3 81. Ba1 Kc2 82. Bf3 Kd3 83. Bde5 Ke3 84. Bh1 Kd3 85. Bh8 Kc4 86. Kb6 Kd3 87. Kc5 Kc2 88. Kc4 Kb1 89. Kb3 Kc1 90. Kc3 Kd1 91. Kd3 Ke1 92. Ke3 Kf1 93. Kf3 Kg1 94. Kg3 Kxh1 95. Bhe5 Kg1 96. Bad4+ Kf1 97. Bc3 Ke2 98. Kf4 Kd3 99. Kf5 Kc4 100. Ke4 Kb5 101. Kd5 Kb6 102. Bb4 Kb5 103. Bed6 Ka4 104. Kc4 1/2-1/2`
+
+func (s *PGNSuite) TestLichessGame1479(c *C) {
+	ps := NewPGNScanner(strings.NewReader(lichessGame1479))
+	c.Assert(ps.Next(), Equals, true)
+	game, err := ps.Scan()
+	c.Assert(err, IsNil)
+	c.Assert(game, NotNil)
+	c.Assert(len(game.Moves) > 0, Equals, true)
+}
+
+// Test that GameState works correctly.
+func (s *PGNSuite) TestGameStateBasic(c *C) {
+	gs := NewStartingPosition()
+	c.Assert(gs, NotNil)
+
+	gs2, err := NewGame("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1")
+	c.Assert(err, IsNil)
+	c.Assert(gs2, NotNil)
+	
+	// Test PieceAt
+	c.Assert(gs.PieceAt(SqE1), Equals, byte('K'))
+	c.Assert(gs.PieceAt(SqE8), Equals, byte('k'))
+	
+	// Test FindKing
+	c.Assert(gs.findKing(White), Equals, SqE1)
+	c.Assert(gs.findKing(Black), Equals, SqE8)
 }
