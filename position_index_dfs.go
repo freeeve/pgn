@@ -1,0 +1,723 @@
+// position_index_dfs.go provides memory-efficient DFS position enumeration.
+//
+// DFS uses O(depth) memory instead of BFS's O(width), making it vastly more
+// efficient for deep enumeration. At depth 40, BFS might use GBs while DFS
+// uses only a few KB.
+
+package pgn
+
+import (
+	"encoding/csv"
+	"fmt"
+	"os"
+	"sort"
+	"strconv"
+	"sync"
+	"sync/atomic"
+)
+
+const (
+	CheckpointIntervalDFS = 1 << 20 // 1,048,576
+
+	// Max depth for terminal detection (prevent infinite loops)
+	MaxDepthDFS = 500 // ~250 moves, well beyond normal games
+)
+
+// CheckpointDFS stores minimal info for DFS restart.
+type CheckpointDFS struct {
+	Index uint64    // Position index
+	Depth int       // Current ply depth
+	State GameState // Position state (for quick restart)
+}
+
+// positionsEqual checks if two positions are identical (including move counters).
+// Used for position-to-index lookup.
+func positionsEqual(a, b *GameState) bool {
+	if a.SideToMove != b.SideToMove {
+		return false
+	}
+	if a.Castle != b.Castle {
+		return false
+	}
+	if a.EP != b.EP {
+		return false
+	}
+	if a.Halfmove != b.Halfmove {
+		return false
+	}
+	if a.Fullmove != b.Fullmove {
+		return false
+	}
+	for i := 0; i < v2PieceCount; i++ {
+		if a.pieces[i] != b.pieces[i] {
+			return false
+		}
+	}
+	return true
+}
+
+// positionID computes a hash for repetition detection.
+// Excludes halfmove/fullmove counters (so same board state = same ID).
+func positionID(pos *GameState) uint64 {
+	// Simple FNV-1a hash combining all position components
+	const offset64 = 14695981039346656037
+	const prime64 = 1099511628211
+
+	h := uint64(offset64)
+
+	// Hash all piece bitboards
+	for i := 0; i < v2PieceCount; i++ {
+		h ^= uint64(pos.pieces[i])
+		h *= prime64
+	}
+
+	// Hash side to move
+	h ^= uint64(pos.SideToMove)
+	h *= prime64
+
+	// Hash castling rights
+	h ^= uint64(pos.Castle)
+	h *= prime64
+
+	// Hash EP square
+	h ^= uint64(pos.EP)
+	h *= prime64
+
+	// Note: we do NOT hash halfmove or fullmove
+	// This makes the ID suitable for repetition detection
+
+	return h
+}
+
+// PositionEnumeratorDFS performs depth-first enumeration.
+type PositionEnumeratorDFS struct {
+	startPos    GameState
+	checkpoints []*CheckpointDFS
+	currentIdx  uint64
+}
+
+// NewPositionEnumeratorDFS creates a DFS enumerator.
+func NewPositionEnumeratorDFS(startPos *GameState) *PositionEnumeratorDFS {
+	var start GameState
+	if startPos == nil {
+		s, _ := NewGame("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1")
+		start = *s
+	} else {
+		start = *startPos
+	}
+
+	return &PositionEnumeratorDFS{
+		startPos:    start,
+		checkpoints: make([]*CheckpointDFS, 0, 64),
+		currentIdx:  0,
+	}
+}
+
+// EnumerateDFS performs depth-first enumeration with make/unmake.
+// This is MUCH more memory efficient than BFS - only O(depth) memory.
+//
+// The enumeration order is deterministic based on move generation order.
+// Terminal conditions:
+//   - Checkmate/Stalemate (no legal moves)
+//   - 50-move rule (halfmove >= 100)
+//   - Threefold repetition (same position 3x on path)
+//   - Max depth reached (safety limit)
+//   - Callback returns false (early stop)
+//
+// The callback should return true to continue, false to stop enumeration.
+func (e *PositionEnumeratorDFS) EnumerateDFS(
+	maxDepth int,
+	callback func(index uint64, pos *GameState, depth int) bool,
+) {
+	if maxDepth <= 0 {
+		maxDepth = MaxDepthDFS
+	}
+
+	repCount := make(map[uint64]uint8, 100) // Track repetitions on current path
+	e.currentIdx = 0
+	e.enumerateDFSRecursive(&e.startPos, 0, maxDepth, repCount, callback)
+}
+
+// enumerateDFSRecursive is the recursive DFS worker.
+// Uses make/unmake pattern for minimal allocations.
+// Returns false if enumeration should stop (callback returned false).
+func (e *PositionEnumeratorDFS) enumerateDFSRecursive(
+	pos *GameState,
+	depth int,
+	maxDepth int,
+	repCount map[uint64]uint8,
+	callback func(uint64, *GameState, int) bool,
+) bool {
+	// Visit this position
+	if callback != nil {
+		if !callback(e.currentIdx, pos, depth) {
+			return false // Early stop requested
+		}
+	}
+
+	// Store checkpoint if needed
+	if e.currentIdx%CheckpointIntervalDFS == 0 {
+		ckpt := &CheckpointDFS{
+			Index: e.currentIdx,
+			Depth: depth,
+			State: *pos, // Copy state
+		}
+		e.checkpoints = append(e.checkpoints, ckpt)
+	}
+
+	e.currentIdx++
+
+	// Terminal conditions
+	if depth >= maxDepth {
+		return true
+	}
+
+	// 50-move rule: stop if halfmove >= 100
+	if pos.Halfmove >= 100 {
+		return true
+	}
+
+	// Threefold repetition: only check if we're deep enough for cycles to be possible
+	// (need at least 8 plies = 4 moves each side to create a repetition)
+	if depth >= 8 {
+		posID := positionID(pos)
+		if repCount[posID] >= 2 {
+			return true // Would be 3rd occurrence = draw
+		}
+
+		// Track this position on the path
+		repCount[posID]++
+		defer func() { repCount[posID]-- }()
+	}
+
+	// Generate pseudo-legal moves using pooled buffers (zero allocations)
+	pseudo := getMoveList()
+	genPseudoMovesTo(pseudo, pos)
+
+	// Track if any legal move exists (for checkmate/stalemate detection)
+	hasLegal := false
+
+	for _, mv := range *pseudo {
+		// Make move
+		undo := MakeMove(pos, mv)
+
+		// Check if move is legal (our king not in check)
+		ourKing := kingSquare(pos, pos.SideToMove^1) // We switched sides after MakeMove
+		inCheck := squareAttacked(pos, ourKing, pos.SideToMove)
+
+		if !inCheck {
+			hasLegal = true
+			// Legal move - recurse
+			if !e.enumerateDFSRecursive(pos, depth+1, maxDepth, repCount, callback) {
+				UnmakeMove(pos, mv, undo)
+				releaseMoves(pseudo)
+				return false
+			}
+		}
+
+		// Unmake move
+		UnmakeMove(pos, mv, undo)
+	}
+
+	releaseMoves(pseudo)
+
+	// Terminal: no legal moves (checkmate or stalemate)
+	// This is fine - we've already visited this position above
+	_ = hasLegal
+
+	return true
+}
+
+// countDFS counts positions in a subtree without storing them.
+// Used for the first pass of parallel enumeration.
+func countDFS(pos *GameState, depth, maxDepth int, repCount map[uint64]uint8) uint64 {
+	// Count this position
+	count := uint64(1)
+
+	// Terminal conditions
+	if depth >= maxDepth {
+		return count
+	}
+
+	if pos.Halfmove >= 100 {
+		return count
+	}
+
+	// Threefold repetition check
+	if depth >= 8 {
+		posID := positionID(pos)
+		if repCount[posID] >= 2 {
+			return count
+		}
+		repCount[posID]++
+		defer func() { repCount[posID]-- }()
+	}
+
+	// Generate pseudo-legal moves using pooled buffers
+	pseudo := getMoveList()
+	genPseudoMovesTo(pseudo, pos)
+
+	for _, mv := range *pseudo {
+		undo := MakeMove(pos, mv)
+
+		// Check if move is legal
+		ourKing := kingSquare(pos, pos.SideToMove^1)
+		inCheck := squareAttacked(pos, ourKing, pos.SideToMove)
+
+		if !inCheck {
+			count += countDFS(pos, depth+1, maxDepth, repCount)
+		}
+
+		UnmakeMove(pos, mv, undo)
+	}
+
+	releaseMoves(pseudo)
+	return count
+}
+
+// EnumerateDFSParallel performs two-pass parallel enumeration with deterministic ordering.
+//
+// Pass 1: Count subtree sizes for each root move (parallel)
+// Pass 2: Enumerate each subtree with correct index offsets (parallel)
+//
+// This maintains deterministic position-to-index mapping while using all CPU cores.
+func (e *PositionEnumeratorDFS) EnumerateDFSParallel(
+	maxDepth int,
+	callback func(index uint64, pos *GameState, depth int) bool,
+) {
+	if maxDepth <= 0 {
+		maxDepth = MaxDepthDFS
+	}
+
+	// Generate root moves (deterministic order)
+	moves := getMoveList()
+	genPseudoMovesTo(moves, &e.startPos)
+
+	var rootMoves []Mv
+	for _, mv := range *moves {
+		undo := MakeMove(&e.startPos, mv)
+		ourKing := kingSquare(&e.startPos, e.startPos.SideToMove^1)
+		inCheck := squareAttacked(&e.startPos, ourKing, e.startPos.SideToMove)
+		UnmakeMove(&e.startPos, mv, undo)
+
+		if !inCheck {
+			rootMoves = append(rootMoves, mv)
+		}
+	}
+	releaseMoves(moves)
+
+	// Pass 1: Count subtree sizes (parallel)
+	subtreeSizes := make([]uint64, len(rootMoves))
+	var wg sync.WaitGroup
+
+	for i, mv := range rootMoves {
+		wg.Add(1)
+		go func(idx int, move Mv) {
+			defer wg.Done()
+
+			pos := e.startPos
+			undo := MakeMove(&pos, move)
+			repCount := make(map[uint64]uint8, 100)
+			subtreeSizes[idx] = countDFS(&pos, 1, maxDepth, repCount)
+			UnmakeMove(&pos, move, undo)
+		}(i, mv)
+	}
+	wg.Wait()
+
+	// Calculate index offsets for each subtree
+	offsets := make([]uint64, len(rootMoves))
+	offsets[0] = 1 // Root position is index 0
+	for i := 1; i < len(rootMoves); i++ {
+		offsets[i] = offsets[i-1] + subtreeSizes[i-1]
+	}
+
+	// Visit root position first (index 0)
+	if callback != nil {
+		if !callback(0, &e.startPos, 0) {
+			return // Early stop
+		}
+	}
+
+	// Store root checkpoint
+	e.checkpoints = append(e.checkpoints, &CheckpointDFS{
+		Index: 0,
+		Depth: 0,
+		State: e.startPos,
+	})
+
+	// Pass 2: Enumerate subtrees in parallel
+	type subtreeResult struct {
+		checkpoints []*CheckpointDFS
+	}
+
+	results := make([]subtreeResult, len(rootMoves))
+	var stopRequested atomic.Bool
+
+	for i, mv := range rootMoves {
+		wg.Add(1)
+		go func(idx int, move Mv, startIdx uint64) {
+			defer wg.Done()
+
+			if stopRequested.Load() {
+				return
+			}
+
+			pos := e.startPos
+			undo := MakeMove(&pos, move)
+
+			// Create sub-enumerator for this subtree
+			subEnum := &PositionEnumeratorDFS{
+				startPos:    pos,
+				checkpoints: make([]*CheckpointDFS, 0, 100),
+				currentIdx:  startIdx,
+			}
+
+			repCount := make(map[uint64]uint8, 100)
+			stopped := !subEnum.enumerateDFSRecursive(&pos, 1, maxDepth, repCount, callback)
+
+			if stopped {
+				stopRequested.Store(true)
+			}
+
+			results[idx].checkpoints = subEnum.checkpoints
+			UnmakeMove(&pos, move, undo)
+		}(i, mv, offsets[i])
+	}
+	wg.Wait()
+
+	// Merge checkpoints from all subtrees
+	for _, result := range results {
+		e.checkpoints = append(e.checkpoints, result.checkpoints...)
+	}
+
+	// Sort checkpoints by index (should already be sorted, but ensure it)
+	sort.Slice(e.checkpoints, func(i, j int) bool {
+		return e.checkpoints[i].Index < e.checkpoints[j].Index
+	})
+
+	// Set final index count
+	if len(rootMoves) > 0 {
+		lastIdx := len(rootMoves) - 1
+		e.currentIdx = offsets[lastIdx] + subtreeSizes[lastIdx]
+	} else {
+		e.currentIdx = 1 // Just the root position
+	}
+}
+
+// GetCheckpointsDFS returns all stored checkpoints.
+func (e *PositionEnumeratorDFS) GetCheckpointsDFS() []*CheckpointDFS {
+	return e.checkpoints
+}
+
+// GetCheckpointForIndexDFS finds the checkpoint at or before the given index.
+func (e *PositionEnumeratorDFS) GetCheckpointForIndexDFS(targetIdx uint64) *CheckpointDFS {
+	if len(e.checkpoints) == 0 {
+		return nil
+	}
+
+	var best *CheckpointDFS
+	for _, ckpt := range e.checkpoints {
+		if ckpt.Index <= targetIdx && (best == nil || ckpt.Index > best.Index) {
+			best = ckpt
+		}
+	}
+	return best
+}
+
+// PositionAtIndexDFS returns the position at a specific index.
+// This replays from the nearest checkpoint using DFS.
+func (e *PositionEnumeratorDFS) PositionAtIndexDFS(targetIdx uint64, maxDepth int) (*GameState, bool) {
+	// Find nearest checkpoint
+	ckpt := e.GetCheckpointForIndexDFS(targetIdx)
+
+	var startState GameState
+	var startIdx uint64
+	var startDepth int
+
+	if ckpt != nil {
+		startState = ckpt.State
+		startIdx = ckpt.Index
+		startDepth = ckpt.Depth
+	} else {
+		startState = e.startPos
+		startIdx = 0
+		startDepth = 0
+	}
+
+	// Already at target?
+	if startIdx == targetIdx {
+		return &startState, true
+	}
+
+	if maxDepth <= 0 {
+		maxDepth = MaxDepthDFS
+	}
+
+	// DFS from checkpoint until we hit target
+	var result *GameState
+	found := false
+
+	currentIdx := startIdx
+	var searchDFS func(*GameState, int, int)
+	searchDFS = func(pos *GameState, depth int, maxD int) {
+		if found {
+			return // Already found, stop recursion
+		}
+
+		// Check if this is the target
+		if currentIdx == targetIdx {
+			result = &GameState{}
+			*result = *pos
+			found = true
+			return
+		}
+		currentIdx++
+
+		if depth >= maxD {
+			return
+		}
+
+		moves := GenerateLegalMoves(pos)
+		for _, mv := range moves {
+			if found {
+				return
+			}
+
+			undo := MakeMove(pos, mv)
+			searchDFS(pos, depth+1, maxD)
+			UnmakeMove(pos, mv, undo)
+		}
+	}
+
+	searchDFS(&startState, startDepth, maxDepth)
+	return result, found
+}
+
+// IndexOfPositionDFS searches for a position and returns its index.
+func (e *PositionEnumeratorDFS) IndexOfPositionDFS(target *GameState, maxDepth int) (uint64, bool) {
+	if target == nil {
+		return 0, false
+	}
+
+	if maxDepth <= 0 {
+		maxDepth = MaxDepthDFS
+	}
+
+	currentIdx := uint64(0)
+	found := false
+	var foundIdx uint64
+
+	var searchDFS func(*GameState, int, int)
+	searchDFS = func(pos *GameState, depth int, maxD int) {
+		if found {
+			return
+		}
+
+		// Check if matches target
+		if positionsEqual(pos, target) {
+			foundIdx = currentIdx
+			found = true
+			return
+		}
+		currentIdx++
+
+		if depth >= maxD {
+			return
+		}
+
+		moves := GenerateLegalMoves(pos)
+		for _, mv := range moves {
+			if found {
+				return
+			}
+
+			undo := MakeMove(pos, mv)
+			searchDFS(pos, depth+1, maxD)
+			UnmakeMove(pos, mv, undo)
+		}
+	}
+
+	startPos := e.startPos
+	searchDFS(&startPos, 0, maxDepth)
+	return foundIdx, found
+}
+
+// CurrentIndexDFS returns the current enumeration index.
+func (e *PositionEnumeratorDFS) CurrentIndexDFS() uint64 {
+	return e.currentIdx
+}
+
+// ContinueFromCheckpoint continues enumeration from a checkpoint.
+// This allows extending enumeration depth or resuming after interruption.
+func (e *PositionEnumeratorDFS) ContinueFromCheckpoint(
+	ckptIdx int,
+	maxDepth int,
+	callback func(uint64, *GameState, int) bool,
+) error {
+	if ckptIdx < 0 || ckptIdx >= len(e.checkpoints) {
+		return nil
+	}
+
+	ckpt := e.checkpoints[ckptIdx]
+	e.currentIdx = ckpt.Index
+
+	state := ckpt.State
+	repCount := make(map[uint64]uint8, 100)
+
+	e.enumerateDFSRecursive(&state, ckpt.Depth, maxDepth, repCount, callback)
+	return nil
+}
+
+// SaveCheckpointsCSV writes checkpoints to a CSV file with metadata.
+// Format: index,depth,fen with maxDepth metadata header.
+func (e *PositionEnumeratorDFS) SaveCheckpointsCSV(filename string, maxDepth int) error {
+	file, err := os.Create(filename)
+	if err != nil {
+		return fmt.Errorf("failed to create checkpoint file: %w", err)
+	}
+	defer file.Close()
+
+	writer := csv.NewWriter(file)
+	defer writer.Flush()
+
+	// Write header with metadata
+	if err := writer.Write([]string{"# maxDepth=" + strconv.Itoa(maxDepth)}); err != nil {
+		return fmt.Errorf("failed to write metadata: %w", err)
+	}
+
+	// Write CSV header
+	if err := writer.Write([]string{"index", "depth", "fen"}); err != nil {
+		return fmt.Errorf("failed to write header: %w", err)
+	}
+
+	// Write each checkpoint
+	for _, ckpt := range e.checkpoints {
+		record := []string{
+			strconv.FormatUint(ckpt.Index, 10),
+			strconv.Itoa(ckpt.Depth),
+			ckpt.State.ToFEN(),
+		}
+		if err := writer.Write(record); err != nil {
+			return fmt.Errorf("failed to write checkpoint: %w", err)
+		}
+	}
+
+	return nil
+}
+
+// LoadCheckpointsCSV loads checkpoints from a CSV file.
+// Returns the number of checkpoints loaded.
+func (e *PositionEnumeratorDFS) LoadCheckpointsCSV(filename string) (int, error) {
+	file, err := os.Open(filename)
+	if err != nil {
+		return 0, fmt.Errorf("failed to open checkpoint file: %w", err)
+	}
+	defer file.Close()
+
+	reader := csv.NewReader(file)
+	reader.FieldsPerRecord = -1 // Allow variable number of fields (for metadata lines)
+	reader.Comment = '#'         // Skip lines starting with #
+
+	// Skip header lines
+	headerSkipped := false
+
+	// Read checkpoints
+	e.checkpoints = make([]*CheckpointDFS, 0)
+	count := 0
+
+	for {
+		record, err := reader.Read()
+		if err != nil {
+			break // EOF or error
+		}
+
+		// Skip header line (first non-comment line)
+		if !headerSkipped {
+			headerSkipped = true
+			continue
+		}
+
+		// Handle both formats:
+		// Old format: index,fen
+		// New format: index,depth,fen
+		var index uint64
+		var depth int
+		var fen string
+
+		if len(record) == 2 {
+			// Old format: index,fen
+			index, err = strconv.ParseUint(record[0], 10, 64)
+			if err != nil {
+				return count, fmt.Errorf("invalid index in checkpoint: %w", err)
+			}
+			depth = 0
+			fen = record[1]
+		} else if len(record) == 3 {
+			// New format: index,depth,fen
+			index, err = strconv.ParseUint(record[0], 10, 64)
+			if err != nil {
+				return count, fmt.Errorf("invalid index in checkpoint: %w", err)
+			}
+			depth, err = strconv.Atoi(record[1])
+			if err != nil {
+				return count, fmt.Errorf("invalid depth in checkpoint: %w", err)
+			}
+			fen = record[2]
+		} else {
+			continue // Skip malformed lines
+		}
+
+		state, err := NewGame(fen)
+		if err != nil {
+			return count, fmt.Errorf("invalid FEN in checkpoint: %w", err)
+		}
+
+		ckpt := &CheckpointDFS{
+			Index: index,
+			Depth: depth,
+			State: *state,
+		}
+
+		e.checkpoints = append(e.checkpoints, ckpt)
+		count++
+	}
+
+	return count, nil
+}
+
+// AppendCheckpointCSV appends a single checkpoint to a CSV file.
+// This is useful for incremental saves during long enumerations.
+func AppendCheckpointCSV(filename string, index uint64, fen string) error {
+	// Check if file exists
+	fileExists := true
+	if _, err := os.Stat(filename); os.IsNotExist(err) {
+		fileExists = false
+	}
+
+	file, err := os.OpenFile(filename, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	if err != nil {
+		return fmt.Errorf("failed to open checkpoint file: %w", err)
+	}
+	defer file.Close()
+
+	writer := csv.NewWriter(file)
+	defer writer.Flush()
+
+	// Write header if new file
+	if !fileExists {
+		if err := writer.Write([]string{"index", "fen"}); err != nil {
+			return fmt.Errorf("failed to write header: %w", err)
+		}
+	}
+
+	// Write checkpoint
+	record := []string{
+		strconv.FormatUint(index, 10),
+		fen,
+	}
+	if err := writer.Write(record); err != nil {
+		return fmt.Errorf("failed to write checkpoint: %w", err)
+	}
+
+	return nil
+}

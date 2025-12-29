@@ -5,3 +5,11 @@
 *.test
 coverage.out
 *.prof
+
+# IDE
+.idea/
+.vscode/
+.claude/
+
+# Build artifacts
+cmd/build_packedposition_dict/
