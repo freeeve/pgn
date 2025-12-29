@@ -9,11 +9,15 @@ package pgn
 import (
 	"encoding/csv"
 	"fmt"
+	"io"
 	"os"
 	"sort"
 	"strconv"
+	"strings"
 	"sync"
 	"sync/atomic"
+
+	"github.com/klauspost/compress/zstd"
 )
 
 const (
@@ -568,8 +572,14 @@ func (e *PositionEnumeratorDFS) ContinueFromCheckpoint(
 	return nil
 }
 
+// isZstdFile returns true if the filename indicates zstd compression.
+func isZstdFile(filename string) bool {
+	return strings.HasSuffix(filename, ".zstd") || strings.HasSuffix(filename, ".zst")
+}
+
 // SaveCheckpointsCSV writes checkpoints to a CSV file with metadata.
 // Format: index,depth,fen with maxDepth metadata header.
+// If filename ends with .zstd or .zst, the output is compressed.
 func (e *PositionEnumeratorDFS) SaveCheckpointsCSV(filename string, maxDepth int) error {
 	file, err := os.Create(filename)
 	if err != nil {
@@ -577,7 +587,19 @@ func (e *PositionEnumeratorDFS) SaveCheckpointsCSV(filename string, maxDepth int
 	}
 	defer file.Close()
 
-	writer := csv.NewWriter(file)
+	var writer *csv.Writer
+	var zw *zstd.Encoder
+
+	if isZstdFile(filename) {
+		zw, err = zstd.NewWriter(file)
+		if err != nil {
+			return fmt.Errorf("failed to create zstd encoder: %w", err)
+		}
+		defer zw.Close()
+		writer = csv.NewWriter(zw)
+	} else {
+		writer = csv.NewWriter(file)
+	}
 	defer writer.Flush()
 
 	// Write header with metadata
@@ -607,6 +629,7 @@ func (e *PositionEnumeratorDFS) SaveCheckpointsCSV(filename string, maxDepth int
 
 // LoadCheckpointsCSV loads checkpoints from a CSV file.
 // Returns the number of checkpoints loaded.
+// If filename ends with .zstd or .zst, the input is decompressed.
 func (e *PositionEnumeratorDFS) LoadCheckpointsCSV(filename string) (int, error) {
 	file, err := os.Open(filename)
 	if err != nil {
@@ -614,7 +637,18 @@ func (e *PositionEnumeratorDFS) LoadCheckpointsCSV(filename string) (int, error)
 	}
 	defer file.Close()
 
-	reader := csv.NewReader(file)
+	var csvReader io.Reader = file
+
+	if isZstdFile(filename) {
+		zr, err := zstd.NewReader(file)
+		if err != nil {
+			return 0, fmt.Errorf("failed to create zstd decoder: %w", err)
+		}
+		defer zr.Close()
+		csvReader = zr
+	}
+
+	reader := csv.NewReader(csvReader)
 	reader.FieldsPerRecord = -1 // Allow variable number of fields (for metadata lines)
 	reader.Comment = '#'         // Skip lines starting with #
 

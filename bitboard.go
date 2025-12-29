@@ -7,6 +7,8 @@
 //   - ParsePGNParallel: high-performance parallel parser
 package pgn
 
+import "fmt"
+
 // Bitboard represents a set of squares as a 64-bit integer where each bit
 // corresponds to a square (bit 0 = a1, bit 63 = h8).
 type Bitboard uint64
@@ -192,3 +194,24 @@ func knightAttacks(sq Square) Bitboard { return knightAttacksV2[sq] }
 
 // kingAttacks returns the precomputed king attack bitboard from a square.
 func kingAttacks(sq Square) Bitboard { return kingAttacksV2[sq] }
+
+// ParseSquare parses algebraic notation (e.g., "e4") to a Square.
+func ParseSquare(s string) (Square, error) {
+	if len(s) != 2 {
+		return SqNone, fmt.Errorf("invalid square: %q", s)
+	}
+	file := int(s[0] - 'a')
+	rank := int(s[1] - '1')
+	if file < 0 || file > 7 || rank < 0 || rank > 7 {
+		return SqNone, fmt.Errorf("invalid square: %q", s)
+	}
+	return Square(rank*8 + file), nil
+}
+
+// MakeSquare creates a Square from file (0-7) and rank (0-7).
+func MakeSquare(file, rank int) Square {
+	if file < 0 || file > 7 || rank < 0 || rank > 7 {
+		return SqNone
+	}
+	return Square(rank*8 + file)
+}

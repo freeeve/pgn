@@ -46,10 +46,12 @@ func main() {
 
 - **Fast parallel parsing** - 240+ MB/s, 315K games/sec on Apple M3 Max
 - **Streaming** - Parse files of any size with constant memory
-- **Zstd support** - Automatic decompression of `.zst` files
+- **Zstd support** - Automatic compression/decompression of `.zst` files
 - **Bitboard engine** - Efficient move generation and validation
 - **FEN support** - Parse and generate FEN strings
 - **Packed positions** - 34-byte compact position encoding with base64
+- **Position indexing** - Enumerate all positions with deterministic indices
+- **Game state queries** - IsCheckmate, IsStalemate, IsSquareAttacked, KingSquare
 
 ## API
 
@@ -99,11 +101,19 @@ fen := gs.ToFEN()
 // Get piece at square
 piece := gs.PieceAt(pgn.SqE4) // Returns 'P', 'n', etc. or 0 for empty
 
-// Check if in check
+// Position status
 inCheck := gs.IsInCheck()
+isMate := gs.IsCheckmate()
+isStalemate := gs.IsStalemate()
+
+// Find king location
+whiteKingSq := gs.KingSquare(pgn.White)
+
+// Check if square is attacked
+attacked := gs.IsSquareAttacked(pgn.SqE4, pgn.Black)
 
 // Generate legal moves
-moves := pgn.GenerateLegalMoves(gs, nil)
+moves := pgn.GenerateLegalMoves(gs)
 ```
 
 ### Making Moves
@@ -121,6 +131,10 @@ pgn.UnmakeMove(gs, move, undo)
 move, err := pgn.ParseSAN(gs, "e4")
 move, err := pgn.ParseSAN(gs, "Nxf7+")
 move, err := pgn.ParseSAN(gs, "O-O-O")
+
+// Parse UCI notation
+move, err := pgn.ParseUCI("e2e4")
+move, err := pgn.ParseUCI("e7e8q") // promotion
 ```
 
 ### Packed Positions
@@ -143,6 +157,44 @@ gs := packed.Unpack()
 
 // Convert to FEN
 fen := packed.ToFEN()
+```
+
+### Position Indexing
+
+Enumerate all legal chess positions up to a given depth with deterministic indexing:
+
+```go
+// Create enumerator from starting position
+start := pgn.NewStartingPosition()
+enum := pgn.NewPositionEnumeratorDFS(start)
+
+// Enumerate all positions up to depth 5 (~5M positions)
+enum.EnumerateDFS(5, func(index uint64, pos *pgn.GameState, depth int) bool {
+    // Each position has a unique, deterministic index
+    fmt.Printf("Index %d (depth %d): %s\n", index, depth, pos.ToFEN())
+    return true // continue enumeration
+})
+
+// Save checkpoints for fast position lookup (supports .zstd compression)
+enum.SaveCheckpointsCSV("checkpoints_depth5.csv.zstd", 5)
+
+// Load checkpoints and lookup positions by index
+enum2 := pgn.NewPositionEnumeratorDFS(start)
+enum2.LoadCheckpointsCSV("checkpoints_depth5.csv.zstd")
+pos, found := enum2.PositionAtIndexDFS(1000000, 5)
+
+// Find index of a position
+idx, found := enum2.IndexOfPositionDFS(somePosition, 5)
+```
+
+**Build checkpoint files** with the included tool:
+
+```bash
+# Build and run (outputs checkpoints_depth7.csv.zstd by default)
+go run ./cmd/build_checkpoints -depth 7
+
+# Custom output, more cores
+go run ./cmd/build_checkpoints -depth 8 -cores 16 -output my_checkpoints.csv.zstd
 ```
 
 ## Benchmarks
@@ -244,24 +296,21 @@ for game := range pgn.Games("games.pgn").Games {
 }
 ```
 
-### Type Conversions
-
-If you need backward compatibility with v1 types:
+### Square Utilities
 
 ```go
-import "github.com/freeeve/pgn/v2"
+// Parse algebraic notation
+sq, err := pgn.ParseSquare("e4") // returns SqE4
 
-// Convert new Square to old Position bitmask
-oldPos := pgn.SquareToPosition(move.From)
+// Create from file/rank (0-indexed)
+sq := pgn.MakeSquare(4, 3) // file=e (4), rank=4 (3) = e4
 
-// Convert old Position to new Square
-newSq := pgn.PositionToSquare(oldPos)
+// Get file and rank
+file := sq.File() // 0-7 for a-h
+rank := sq.Rank() // 0-7 for 1-8
 
-// Convert Mv to legacy Move
-legacyMove := pgn.MvToMove(move)
-
-// Convert legacy Move to Mv
-newMove := pgn.MoveToMv(legacyMove)
+// String representation
+str := sq.String() // "e4"
 ```
 
 ## License

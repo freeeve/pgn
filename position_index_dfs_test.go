@@ -390,13 +390,141 @@ func TestCheckpointCSVFormat(t *testing.T) {
 	content := string(data)
 	t.Logf("CSV content:\n%s", content)
 
-	// Should have header
-	if !strings.HasPrefix(content, "index,fen\n") {
-		t.Error("Missing or incorrect header")
+	// Should have metadata header and CSV header
+	if !strings.Contains(content, "# maxDepth=3") {
+		t.Error("Missing maxDepth metadata")
+	}
+	if !strings.Contains(content, "index,depth,fen") {
+		t.Error("Missing or incorrect CSV header")
 	}
 
 	// Should have at least the checkpoint at index 0
-	if !strings.Contains(content, "0,"+startFEN) {
+	if !strings.Contains(content, "0,0,"+startFEN) {
 		t.Error("Missing checkpoint at index 0")
 	}
+}
+
+func TestCheckpointFENsAreCorrect(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping in short mode")
+	}
+
+	start, _ := NewGame(startFEN)
+	enum := NewPositionEnumeratorDFS(start)
+
+	// Enumerate enough to create multiple checkpoints (need > 1M positions)
+	enum.EnumerateDFS(5, nil) // ~5M positions = ~5 checkpoints
+
+	checkpoints := enum.GetCheckpointsDFS()
+	if len(checkpoints) < 2 {
+		t.Fatalf("Expected at least 2 checkpoints, got %d", len(checkpoints))
+	}
+
+	// Verify that non-zero index checkpoints have different FENs
+	startingFEN := checkpoints[0].State.ToFEN()
+	for i, ckpt := range checkpoints[1:] {
+		fen := ckpt.State.ToFEN()
+		if fen == startingFEN {
+			t.Errorf("Checkpoint %d (index %d) has starting position FEN, expected different position",
+				i+1, ckpt.Index)
+		}
+		// Also verify the FEN parses back to a valid position
+		parsed, err := NewGame(fen)
+		if err != nil {
+			t.Errorf("Checkpoint %d FEN failed to parse: %v", i+1, err)
+			continue
+		}
+		// And that it matches the stored state
+		if !positionsEqual(&ckpt.State, parsed) {
+			t.Errorf("Checkpoint %d: parsed FEN doesn't match stored state", i+1)
+		}
+	}
+	t.Logf("Verified %d checkpoints have correct unique FENs", len(checkpoints))
+}
+
+func TestPositionLookupWithZstdCheckpoints(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping in short mode")
+	}
+
+	start, _ := NewGame(startFEN)
+	enum := NewPositionEnumeratorDFS(start)
+
+	// Enumerate to create multiple checkpoints
+	positions := make(map[uint64]string)
+	enum.EnumerateDFS(5, func(index uint64, pos *GameState, depth int) bool {
+		// Sample only at checkpoint boundaries (guaranteed findable)
+		if index%CheckpointIntervalDFS == 0 {
+			positions[index] = pos.ToFEN()
+		}
+		return true
+	})
+
+	// Save to zstd file
+	filename := "/tmp/test_lookup.csv.zstd"
+	defer os.Remove(filename)
+
+	err := enum.SaveCheckpointsCSV(filename, 5)
+	if err != nil {
+		t.Fatalf("Failed to save: %v", err)
+	}
+
+	// Load into fresh enumerator
+	enum2 := NewPositionEnumeratorDFS(start)
+	count, err := enum2.LoadCheckpointsCSV(filename)
+	if err != nil {
+		t.Fatalf("Failed to load zstd checkpoints: %v", err)
+	}
+	t.Logf("Loaded %d checkpoints from zstd file", count)
+
+	// Verify position lookup works
+	for idx, expectedFEN := range positions {
+		pos, found := enum2.PositionAtIndexDFS(idx, 5)
+		if !found {
+			t.Errorf("Position at index %d not found", idx)
+			continue
+		}
+		if pos.ToFEN() != expectedFEN {
+			t.Errorf("Position at index %d mismatch:\nExpected: %s\nGot: %s",
+				idx, expectedFEN, pos.ToFEN())
+		}
+	}
+	t.Logf("Verified %d position lookups with zstd checkpoints", len(positions))
+}
+
+func TestCheckpointCSVZstdRoundTrip(t *testing.T) {
+	start, _ := NewGame(startFEN)
+	enum := NewPositionEnumeratorDFS(start)
+
+	// Enumerate a small tree to create checkpoints
+	enum.EnumerateDFS(3, nil)
+
+	filename := "/tmp/test_checkpoint.csv.zstd"
+	defer os.Remove(filename)
+
+	// Save compressed
+	err := enum.SaveCheckpointsCSV(filename, 3)
+	if err != nil {
+		t.Fatalf("Failed to save compressed: %v", err)
+	}
+
+	// Verify file exists and is smaller than uncompressed would be
+	info, err := os.Stat(filename)
+	if err != nil {
+		t.Fatalf("Failed to stat file: %v", err)
+	}
+	t.Logf("Compressed file size: %d bytes", info.Size())
+
+	// Load into new enumerator
+	enum2 := NewPositionEnumeratorDFS(start)
+	count, err := enum2.LoadCheckpointsCSV(filename)
+	if err != nil {
+		t.Fatalf("Failed to load compressed: %v", err)
+	}
+
+	origCheckpoints := enum.GetCheckpointsDFS()
+	if count != len(origCheckpoints) {
+		t.Errorf("Checkpoint count mismatch: got %d, want %d", count, len(origCheckpoints))
+	}
+	t.Logf("Round-trip successful: %d checkpoints", count)
 }

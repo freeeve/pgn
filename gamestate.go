@@ -135,7 +135,7 @@ func NewGame(fen string) (*GameState, error) {
 	}
 
 	if parts[3] != "-" {
-		sq, err := parseSquare(parts[3])
+		sq, err := ParseSquare(parts[3])
 		if err != nil {
 			return nil, fmt.Errorf("invalid ep square: %v", err)
 		}
@@ -167,10 +167,8 @@ func NewGame(fen string) (*GameState, error) {
 }
 
 // ToFEN returns the FEN string for the position.
+// Always computes from piece positions (cached FEN is only for initial position).
 func (p *GameState) ToFEN() string {
-	if p.FEN != "" {
-		return p.FEN
-	}
 	board := make([]byte, 0, 64*2)
 	for rank := 7; rank >= 0; rank-- {
 		empty := 0
@@ -234,18 +232,6 @@ func (p *GameState) setPiece(idx int, sq Square) {
 	}
 	p.occ[color] |= 1 << uint(sq)
 	p.occAll |= 1 << uint(sq)
-}
-
-func parseSquare(str string) (Square, error) {
-	if len(str) != 2 {
-		return -1, fmt.Errorf("bad square %q", str)
-	}
-	file := int(str[0] - 'a')
-	rank := int(str[1] - '1')
-	if file < 0 || file > 7 || rank < 0 || rank > 7 {
-		return -1, fmt.Errorf("bad square %q", str)
-	}
-	return Square(rank*8 + file), nil
 }
 
 // PieceAt returns the piece character at the given square.
@@ -329,6 +315,28 @@ func (p *GameState) IsInCheck() bool {
 		return false
 	}
 	return squareAttacked(p, kingSq, p.SideToMove^1)
+}
+
+// IsCheckmate returns true if the side to move is in checkmate.
+func (p *GameState) IsCheckmate() bool {
+	return p.IsInCheck() && len(GenerateLegalMoves(p)) == 0
+}
+
+// IsStalemate returns true if the side to move is in stalemate
+// (not in check but has no legal moves).
+func (p *GameState) IsStalemate() bool {
+	return !p.IsInCheck() && len(GenerateLegalMoves(p)) == 0
+}
+
+// KingSquare returns the square of the king for the given color.
+// Returns -1 if no king is found.
+func (p *GameState) KingSquare(color Color) Square {
+	return p.findKing(color)
+}
+
+// IsSquareAttacked returns true if the given square is attacked by the specified color.
+func (p *GameState) IsSquareAttacked(sq Square, byColor Color) bool {
+	return squareAttacked(p, sq, byColor)
 }
 
 // Copy returns a deep copy of the game state.
