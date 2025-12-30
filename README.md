@@ -175,12 +175,12 @@ enum.EnumerateDFS(5, func(index uint64, pos *pgn.GameState, depth int) bool {
     return true // continue enumeration
 })
 
-// Save checkpoints for fast position lookup (supports .zstd compression)
-enum.SaveCheckpointsCSV("checkpoints_depth5.csv.zstd", 5)
+// Save checkpoints for fast position lookup (supports .zst compression)
+enum.SaveCheckpointsCSV("checkpoints_depth5.csv.zst", 5)
 
 // Load checkpoints and lookup positions by index
 enum2 := pgn.NewPositionEnumeratorDFS(start)
-enum2.LoadCheckpointsCSV("checkpoints_depth5.csv.zstd")
+enum2.LoadCheckpointsCSV("checkpoints_depth5.csv.zst")
 pos, found := enum2.PositionAtIndexDFS(1000000, 5)
 
 // Find index of a position
@@ -190,11 +190,11 @@ idx, found := enum2.IndexOfPositionDFS(somePosition, 5)
 **Build checkpoint files** with the included tool:
 
 ```bash
-# Build and run (outputs checkpoints_depth7.csv.zstd by default)
+# Build and run (outputs checkpoints_depth7.csv.zst by default)
 go run ./cmd/build_checkpoints -depth 7
 
 # Custom output, more cores
-go run ./cmd/build_checkpoints -depth 8 -cores 16 -output my_checkpoints.csv.zstd
+go run ./cmd/build_checkpoints -depth 8 -cores 16 -output my_checkpoints.csv.zst
 ```
 
 ## Benchmarks

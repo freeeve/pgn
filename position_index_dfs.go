@@ -32,6 +32,7 @@ type CheckpointDFS struct {
 	Index uint64    // Position index
 	Depth int       // Current ply depth
 	State GameState // Position state (for quick restart)
+	Stack []Mv      // Move stack to reach this position (enables DFS resumption)
 }
 
 // positionsEqual checks if two positions are identical (including move counters).
@@ -50,6 +51,26 @@ func positionsEqual(a, b *GameState) bool {
 		return false
 	}
 	if a.Fullmove != b.Fullmove {
+		return false
+	}
+	for i := 0; i < v2PieceCount; i++ {
+		if a.pieces[i] != b.pieces[i] {
+			return false
+		}
+	}
+	return true
+}
+
+// boardsEqual checks if two positions have the same board state.
+// Ignores halfmove and fullmove counters (useful for finding transpositions).
+func boardsEqual(a, b *GameState) bool {
+	if a.SideToMove != b.SideToMove {
+		return false
+	}
+	if a.Castle != b.Castle {
+		return false
+	}
+	if a.EP != b.EP {
 		return false
 	}
 	for i := 0; i < v2PieceCount; i++ {
@@ -95,9 +116,10 @@ func positionID(pos *GameState) uint64 {
 
 // PositionEnumeratorDFS performs depth-first enumeration.
 type PositionEnumeratorDFS struct {
-	startPos    GameState
-	checkpoints []*CheckpointDFS
-	currentIdx  uint64
+	startPos     GameState
+	checkpoints  []*CheckpointDFS
+	currentIdx   uint64
+	currentStack []Mv // Current move stack during enumeration
 }
 
 // NewPositionEnumeratorDFS creates a DFS enumerator.
@@ -139,6 +161,8 @@ func (e *PositionEnumeratorDFS) EnumerateDFS(
 
 	repCount := make(map[uint64]uint8, 100) // Track repetitions on current path
 	e.currentIdx = 0
+	e.currentStack = make([]Mv, 0, maxDepth) // Initialize move stack
+
 	e.enumerateDFSRecursive(&e.startPos, 0, maxDepth, repCount, callback)
 }
 
@@ -161,10 +185,15 @@ func (e *PositionEnumeratorDFS) enumerateDFSRecursive(
 
 	// Store checkpoint if needed
 	if e.currentIdx%CheckpointIntervalDFS == 0 {
+		// Copy the current move stack for resumption
+		stackCopy := make([]Mv, len(e.currentStack))
+		copy(stackCopy, e.currentStack)
+
 		ckpt := &CheckpointDFS{
 			Index: e.currentIdx,
 			Depth: depth,
 			State: *pos, // Copy state
+			Stack: stackCopy,
 		}
 		e.checkpoints = append(e.checkpoints, ckpt)
 	}
@@ -211,12 +240,20 @@ func (e *PositionEnumeratorDFS) enumerateDFSRecursive(
 
 		if !inCheck {
 			hasLegal = true
+
+			// Push move onto stack before recursing
+			e.currentStack = append(e.currentStack, mv)
+
 			// Legal move - recurse
 			if !e.enumerateDFSRecursive(pos, depth+1, maxDepth, repCount, callback) {
 				UnmakeMove(pos, mv, undo)
+				e.currentStack = e.currentStack[:len(e.currentStack)-1] // Pop
 				releaseMoves(pseudo)
 				return false
 			}
+
+			// Pop move from stack after returning
+			e.currentStack = e.currentStack[:len(e.currentStack)-1]
 		}
 
 		// Unmake move
@@ -429,43 +466,28 @@ func (e *PositionEnumeratorDFS) GetCheckpointForIndexDFS(targetIdx uint64) *Chec
 }
 
 // PositionAtIndexDFS returns the position at a specific index.
-// This replays from the nearest checkpoint using DFS.
+// This replays the DFS from the start until reaching the target index.
 func (e *PositionEnumeratorDFS) PositionAtIndexDFS(targetIdx uint64, maxDepth int) (*GameState, bool) {
-	// Find nearest checkpoint
-	ckpt := e.GetCheckpointForIndexDFS(targetIdx)
-
-	var startState GameState
-	var startIdx uint64
-	var startDepth int
-
-	if ckpt != nil {
-		startState = ckpt.State
-		startIdx = ckpt.Index
-		startDepth = ckpt.Depth
-	} else {
-		startState = e.startPos
-		startIdx = 0
-		startDepth = 0
-	}
-
-	// Already at target?
-	if startIdx == targetIdx {
-		return &startState, true
-	}
-
 	if maxDepth <= 0 {
 		maxDepth = MaxDepthDFS
 	}
 
-	// DFS from checkpoint until we hit target
+	// Special case: target is the start position
+	if targetIdx == 0 {
+		result := e.startPos
+		return &result, true
+	}
+
+	// Full DFS replay until we hit the target index
 	var result *GameState
 	found := false
+	currentIdx := uint64(0)
+	repCount := make(map[uint64]uint8, 100)
 
-	currentIdx := startIdx
-	var searchDFS func(*GameState, int, int)
-	searchDFS = func(pos *GameState, depth int, maxD int) {
+	var searchDFS func(*GameState, int)
+	searchDFS = func(pos *GameState, depth int) {
 		if found {
-			return // Already found, stop recursion
+			return
 		}
 
 		// Check if this is the target
@@ -477,28 +499,66 @@ func (e *PositionEnumeratorDFS) PositionAtIndexDFS(targetIdx uint64, maxDepth in
 		}
 		currentIdx++
 
-		if depth >= maxD {
+		if depth >= maxDepth {
+			return
+		}
+		if pos.Halfmove >= 100 {
 			return
 		}
 
-		moves := GenerateLegalMoves(pos)
-		for _, mv := range moves {
-			if found {
+		// Threefold repetition
+		if depth >= 8 {
+			posID := positionID(pos)
+			if repCount[posID] >= 2 {
 				return
+			}
+			repCount[posID]++
+			defer func() { repCount[posID]-- }()
+		}
+
+		// Use same move generation as enumeration
+		pseudo := getMoveList()
+		genPseudoMovesTo(pseudo, pos)
+
+		for _, mv := range *pseudo {
+			if found {
+				break
 			}
 
 			undo := MakeMove(pos, mv)
-			searchDFS(pos, depth+1, maxD)
+			ourKing := kingSquare(pos, pos.SideToMove^1)
+			inCheck := squareAttacked(pos, ourKing, pos.SideToMove)
+
+			if !inCheck {
+				searchDFS(pos, depth+1)
+			}
+
 			UnmakeMove(pos, mv, undo)
 		}
+		releaseMoves(pseudo)
 	}
 
-	searchDFS(&startState, startDepth, maxDepth)
+	state := e.startPos
+	searchDFS(&state, 0)
 	return result, found
 }
 
+// IndexOfBoardDFS searches for a board state (ignoring move counters) and returns its first index.
+// This is faster than IndexOfPositionDFS when you only care about the board configuration.
+func (e *PositionEnumeratorDFS) IndexOfBoardDFS(target *GameState, maxDepth int) (uint64, bool) {
+	return e.indexOfPositionDFSInternal(target, maxDepth, true)
+}
+
 // IndexOfPositionDFS searches for a position and returns its index.
+// Requires exact match including halfmove and fullmove counters.
 func (e *PositionEnumeratorDFS) IndexOfPositionDFS(target *GameState, maxDepth int) (uint64, bool) {
+	return e.indexOfPositionDFSInternal(target, maxDepth, false)
+}
+
+// indexOfPositionDFSInternal is the internal implementation for position lookup.
+// When stacks are available, searches all gaps using stack-based DFS resumption.
+// Otherwise falls back to full DFS scan.
+func (e *PositionEnumeratorDFS) indexOfPositionDFSInternal(target *GameState, maxDepth int, boardOnly bool) (uint64, bool) {
 	if target == nil {
 		return 0, false
 	}
@@ -507,42 +567,426 @@ func (e *PositionEnumeratorDFS) IndexOfPositionDFS(target *GameState, maxDepth i
 		maxDepth = MaxDepthDFS
 	}
 
+	// Get all checkpoint gaps to search
+	candidateGaps := e.allGaps()
+
+	// If we have checkpoints with stacks, search all gaps
+	if len(e.checkpoints) > 0 && e.checkpoints[0].Stack != nil {
+		return e.searchCandidateGaps(candidateGaps, maxDepth, target, boardOnly)
+	}
+
+	// Fall back to full DFS if no stacks available
+	return e.fullDFSSearch(target, maxDepth, boardOnly, candidateGaps)
+}
+
+// searchCandidateGaps searches candidate gaps in parallel using stack-based resumption.
+// Returns the lowest index found across all candidate gaps.
+func (e *PositionEnumeratorDFS) searchCandidateGaps(
+	candidateGaps []int,
+	maxDepth int,
+	target *GameState,
+	boardOnly bool,
+) (uint64, bool) {
+	if len(candidateGaps) == 0 {
+		return 0, false
+	}
+
+	// For a single gap, no need for goroutines
+	if len(candidateGaps) == 1 {
+		gapIdx := candidateGaps[0]
+		if gapIdx < 0 || gapIdx >= len(e.checkpoints) {
+			return 0, false
+		}
+		ckpt := e.checkpoints[gapIdx]
+		var endIdx uint64
+		if gapIdx+1 < len(e.checkpoints) {
+			endIdx = e.checkpoints[gapIdx+1].Index
+		} else {
+			endIdx = e.currentIdx
+		}
+		return e.searchGapWithStack(ckpt, endIdx, maxDepth, target, boardOnly)
+	}
+
+	// Search all candidate gaps in parallel
+	type result struct {
+		gapIdx   int
+		foundIdx uint64
+		found    bool
+	}
+
+	results := make(chan result, len(candidateGaps))
+	var wg sync.WaitGroup
+
+	for _, gapIdx := range candidateGaps {
+		if gapIdx < 0 || gapIdx >= len(e.checkpoints) {
+			continue
+		}
+
+		wg.Add(1)
+		go func(idx int) {
+			defer wg.Done()
+
+			ckpt := e.checkpoints[idx]
+
+			// Determine end of this gap
+			var endIdx uint64
+			if idx+1 < len(e.checkpoints) {
+				endIdx = e.checkpoints[idx+1].Index
+			} else {
+				endIdx = e.currentIdx
+			}
+
+			// Search this gap
+			foundIdx, found := e.searchGapWithStack(ckpt, endIdx, maxDepth, target, boardOnly)
+			results <- result{gapIdx: idx, foundIdx: foundIdx, found: found}
+		}(gapIdx)
+	}
+
+	// Close results channel when all goroutines complete
+	go func() {
+		wg.Wait()
+		close(results)
+	}()
+
+	// Collect results and find the lowest index
+	var bestIdx uint64
+	bestFound := false
+
+	for r := range results {
+		if r.found {
+			if !bestFound || r.foundIdx < bestIdx {
+				bestIdx = r.foundIdx
+				bestFound = true
+			}
+		}
+	}
+
+	return bestIdx, bestFound
+}
+
+// fullDFSSearch performs a full DFS when stacks aren't available.
+func (e *PositionEnumeratorDFS) fullDFSSearch(
+	target *GameState,
+	maxDepth int,
+	boardOnly bool,
+	candidateGaps []int,
+) (uint64, bool) {
+	// Convert candidate gaps to a set for O(1) lookup
+	candidateSet := make(map[int]bool)
+	for _, g := range candidateGaps {
+		candidateSet[g] = true
+	}
+
 	currentIdx := uint64(0)
 	found := false
 	var foundIdx uint64
+	repCount := make(map[uint64]uint8, 100)
 
-	var searchDFS func(*GameState, int, int)
-	searchDFS = func(pos *GameState, depth int, maxD int) {
+	var searchDFS func(*GameState, int)
+	searchDFS = func(pos *GameState, depth int) {
 		if found {
 			return
 		}
 
+		// Determine which gap this position is in
+		gapIdx := int(currentIdx / CheckpointIntervalDFS)
+
+		// Check if this gap is a candidate (or if we have no filter info)
+		if len(candidateSet) == 0 || candidateSet[gapIdx] {
+			// Check if matches target
+			var matches bool
+			if boardOnly {
+				matches = boardsEqual(pos, target)
+			} else {
+				matches = positionsEqual(pos, target)
+			}
+			if matches {
+				foundIdx = currentIdx
+				found = true
+				return
+			}
+		}
+		currentIdx++
+
+		if depth >= maxDepth {
+			return
+		}
+		if pos.Halfmove >= 100 {
+			return
+		}
+
+		// Threefold repetition
+		if depth >= 8 {
+			posID := positionID(pos)
+			if repCount[posID] >= 2 {
+				return
+			}
+			repCount[posID]++
+			defer func() { repCount[posID]-- }()
+		}
+
+		// Generate moves
+		pseudo := getMoveList()
+		genPseudoMovesTo(pseudo, pos)
+
+		for _, mv := range *pseudo {
+			if found {
+				break
+			}
+
+			undo := MakeMove(pos, mv)
+			ourKing := kingSquare(pos, pos.SideToMove^1)
+			inCheck := squareAttacked(pos, ourKing, pos.SideToMove)
+
+			if !inCheck {
+				searchDFS(pos, depth+1)
+			}
+
+			UnmakeMove(pos, mv, undo)
+		}
+		releaseMoves(pseudo)
+	}
+
+	state := e.startPos
+	searchDFS(&state, 0)
+	return foundIdx, found
+}
+
+// allGaps returns indices of all checkpoint gaps.
+func (e *PositionEnumeratorDFS) allGaps() []int {
+	if len(e.checkpoints) == 0 {
+		return nil
+	}
+	result := make([]int, len(e.checkpoints))
+	for i := range result {
+		result[i] = i
+	}
+	return result
+}
+
+// searchGapWithStack searches within a checkpoint gap using the stack to resume DFS.
+// This allows searching from deep checkpoints by continuing the traversal from where we left off.
+func (e *PositionEnumeratorDFS) searchGapWithStack(
+	ckpt *CheckpointDFS,
+	endIdx uint64,
+	maxDepth int,
+	target *GameState,
+	boardOnly bool,
+) (uint64, bool) {
+	if ckpt.Stack == nil {
+		// No stack - can't resume properly, fall back to forward search only
+		return e.searchGapForward(ckpt, endIdx, maxDepth, target, boardOnly)
+	}
+
+	// Replay the stack to rebuild position and path state
+	pos := e.startPos
+	repCount := make(map[uint64]uint8, 100)
+
+	for i, mv := range ckpt.Stack {
+		// Track repetitions as we replay
+		if i >= 8 {
+			posID := positionID(&pos)
+			repCount[posID]++
+		}
+		MakeMove(&pos, mv)
+	}
+
+	// Now continue the DFS from the checkpoint, exploring remaining siblings
+	currentIdx := ckpt.Index
+	found := false
+	var foundIdx uint64
+
+	// First check the checkpoint position itself
+	var matches bool
+	if boardOnly {
+		matches = boardsEqual(&pos, target)
+	} else {
+		matches = positionsEqual(&pos, target)
+	}
+	if matches {
+		return currentIdx, true
+	}
+	currentIdx++
+
+	// Continue enumeration from checkpoint position
+	var continueDFS func(*GameState, int, []Mv, int)
+	continueDFS = func(state *GameState, depth int, stack []Mv, skipUntilIdx int) {
+		if found || currentIdx >= endIdx {
+			return
+		}
+
+		if depth >= maxDepth {
+			return
+		}
+		if state.Halfmove >= 100 {
+			return
+		}
+
+		// Threefold repetition
+		if depth >= 8 {
+			posID := positionID(state)
+			if repCount[posID] >= 2 {
+				return
+			}
+			repCount[posID]++
+			defer func() { repCount[posID]-- }()
+		}
+
+		// Generate moves
+		pseudo := getMoveList()
+		genPseudoMovesTo(pseudo, state)
+
+		// Determine which move index to start from
+		startMoveIdx := 0
+		if skipUntilIdx >= 0 && skipUntilIdx < len(stack) {
+			// We're resuming - find the move in the stack and start AFTER it
+			targetMv := stack[skipUntilIdx]
+			for i, mv := range *pseudo {
+				if mv == targetMv {
+					startMoveIdx = i + 1 // Start from the NEXT move
+					break
+				}
+			}
+		}
+
+		for i := startMoveIdx; i < len(*pseudo); i++ {
+			if found || currentIdx >= endIdx {
+				break
+			}
+
+			mv := (*pseudo)[i]
+			undo := MakeMove(state, mv)
+
+			// Check if move is legal
+			ourKing := kingSquare(state, state.SideToMove^1)
+			inCheck := squareAttacked(state, ourKing, state.SideToMove)
+
+			if !inCheck {
+				// Visit this position
+				if boardOnly {
+					matches = boardsEqual(state, target)
+				} else {
+					matches = positionsEqual(state, target)
+				}
+				if matches {
+					foundIdx = currentIdx
+					found = true
+					UnmakeMove(state, mv, undo)
+					break
+				}
+				currentIdx++
+
+				// Recurse (no more skipping at deeper levels)
+				continueDFS(state, depth+1, nil, -1)
+			}
+
+			UnmakeMove(state, mv, undo)
+		}
+
+		releaseMoves(pseudo)
+	}
+
+	// Start from checkpoint depth, using stack to know where to resume
+	continueDFS(&pos, ckpt.Depth, ckpt.Stack, ckpt.Depth)
+
+	// If not found yet, we need to also backtrack up the stack
+	if !found && currentIdx < endIdx {
+		// Backtrack through the stack levels
+		for level := len(ckpt.Stack) - 1; level >= 0 && !found && currentIdx < endIdx; level-- {
+			// Unmake moves to get to this level
+			tempPos := e.startPos
+			tempRepCount := make(map[uint64]uint8, 100)
+			for i := 0; i < level; i++ {
+				if i >= 8 {
+					posID := positionID(&tempPos)
+					tempRepCount[posID]++
+				}
+				MakeMove(&tempPos, ckpt.Stack[i])
+			}
+
+			// Continue from this level
+			repCount = tempRepCount
+			continueDFS(&tempPos, level, ckpt.Stack, level)
+		}
+	}
+
+	return foundIdx, found
+}
+
+// searchGapForward searches forward only from the checkpoint (no stack resumption).
+func (e *PositionEnumeratorDFS) searchGapForward(
+	ckpt *CheckpointDFS,
+	endIdx uint64,
+	maxDepth int,
+	target *GameState,
+	boardOnly bool,
+) (uint64, bool) {
+	currentIdx := ckpt.Index
+	found := false
+	var foundIdx uint64
+	repCount := make(map[uint64]uint8, 100)
+
+	var searchDFS func(*GameState, int)
+	searchDFS = func(pos *GameState, depth int) {
+		if found || currentIdx >= endIdx {
+			return
+		}
+
 		// Check if matches target
-		if positionsEqual(pos, target) {
+		var matches bool
+		if boardOnly {
+			matches = boardsEqual(pos, target)
+		} else {
+			matches = positionsEqual(pos, target)
+		}
+		if matches {
 			foundIdx = currentIdx
 			found = true
 			return
 		}
 		currentIdx++
 
-		if depth >= maxD {
+		if depth >= maxDepth {
+			return
+		}
+		if pos.Halfmove >= 100 {
 			return
 		}
 
-		moves := GenerateLegalMoves(pos)
-		for _, mv := range moves {
-			if found {
+		// Threefold repetition
+		if depth >= 8 {
+			posID := positionID(pos)
+			if repCount[posID] >= 2 {
 				return
+			}
+			repCount[posID]++
+			defer func() { repCount[posID]-- }()
+		}
+
+		pseudo := getMoveList()
+		genPseudoMovesTo(pseudo, pos)
+
+		for _, mv := range *pseudo {
+			if found || currentIdx >= endIdx {
+				break
 			}
 
 			undo := MakeMove(pos, mv)
-			searchDFS(pos, depth+1, maxD)
+			ourKing := kingSquare(pos, pos.SideToMove^1)
+			inCheck := squareAttacked(pos, ourKing, pos.SideToMove)
+
+			if !inCheck {
+				searchDFS(pos, depth+1)
+			}
+
 			UnmakeMove(pos, mv, undo)
 		}
+
+		releaseMoves(pseudo)
 	}
 
-	startPos := e.startPos
-	searchDFS(&startPos, 0, maxDepth)
+	state := ckpt.State
+	searchDFS(&state, ckpt.Depth)
 	return foundIdx, found
 }
 
@@ -577,8 +1021,38 @@ func isZstdFile(filename string) bool {
 	return strings.HasSuffix(filename, ".zstd") || strings.HasSuffix(filename, ".zst")
 }
 
+// stackToUCI converts a move stack to UCI notation string (e.g., "e2e4,e7e5,g1f3").
+func stackToUCI(stack []Mv) string {
+	if len(stack) == 0 {
+		return ""
+	}
+	parts := make([]string, len(stack))
+	for i, mv := range stack {
+		parts[i] = mv.String()
+	}
+	return strings.Join(parts, ",")
+}
+
+// uciToStack parses a UCI notation string back to a move stack.
+func uciToStack(uci string) ([]Mv, error) {
+	if uci == "" {
+		return nil, nil
+	}
+	parts := strings.Split(uci, ",")
+	stack := make([]Mv, 0, len(parts))
+	for _, part := range parts {
+		mv, err := ParseUCI(part)
+		if err != nil {
+			return nil, fmt.Errorf("invalid UCI move %q: %w", part, err)
+		}
+		stack = append(stack, mv)
+	}
+	return stack, nil
+}
+
 // SaveCheckpointsCSV writes checkpoints to a CSV file with metadata.
-// Format: index,depth,fen with maxDepth metadata header.
+// Format: index,depth,fen,stack with maxDepth metadata header.
+// The stack field contains comma-separated UCI moves.
 // If filename ends with .zstd or .zst, the output is compressed.
 func (e *PositionEnumeratorDFS) SaveCheckpointsCSV(filename string, maxDepth int) error {
 	file, err := os.Create(filename)
@@ -608,7 +1082,7 @@ func (e *PositionEnumeratorDFS) SaveCheckpointsCSV(filename string, maxDepth int
 	}
 
 	// Write CSV header
-	if err := writer.Write([]string{"index", "depth", "fen"}); err != nil {
+	if err := writer.Write([]string{"index", "depth", "fen", "stack"}); err != nil {
 		return fmt.Errorf("failed to write header: %w", err)
 	}
 
@@ -618,6 +1092,7 @@ func (e *PositionEnumeratorDFS) SaveCheckpointsCSV(filename string, maxDepth int
 			strconv.FormatUint(ckpt.Index, 10),
 			strconv.Itoa(ckpt.Depth),
 			ckpt.State.ToFEN(),
+			stackToUCI(ckpt.Stack),
 		}
 		if err := writer.Write(record); err != nil {
 			return fmt.Errorf("failed to write checkpoint: %w", err)
@@ -658,6 +1133,7 @@ func (e *PositionEnumeratorDFS) LoadCheckpointsCSV(filename string) (int, error)
 	// Read checkpoints
 	e.checkpoints = make([]*CheckpointDFS, 0)
 	count := 0
+	var maxIdx uint64
 
 	for {
 		record, err := reader.Read()
@@ -671,14 +1147,18 @@ func (e *PositionEnumeratorDFS) LoadCheckpointsCSV(filename string) (int, error)
 			continue
 		}
 
-		// Handle both formats:
-		// Old format: index,fen
-		// New format: index,depth,fen
+		// Handle formats:
+		// Old format: index,fen (2 fields)
+		// Medium format: index,depth,fen (3 fields)
+		// Stack format: index,depth,fen,stack (4 fields)
+		// Legacy format: index,depth,fen,stack,bloom (5 fields) - bloom ignored
 		var index uint64
 		var depth int
 		var fen string
+		var stack []Mv
 
-		if len(record) == 2 {
+		switch len(record) {
+		case 2:
 			// Old format: index,fen
 			index, err = strconv.ParseUint(record[0], 10, 64)
 			if err != nil {
@@ -686,8 +1166,9 @@ func (e *PositionEnumeratorDFS) LoadCheckpointsCSV(filename string) (int, error)
 			}
 			depth = 0
 			fen = record[1]
-		} else if len(record) == 3 {
-			// New format: index,depth,fen
+
+		case 3:
+			// Medium format: index,depth,fen
 			index, err = strconv.ParseUint(record[0], 10, 64)
 			if err != nil {
 				return count, fmt.Errorf("invalid index in checkpoint: %w", err)
@@ -697,7 +1178,30 @@ func (e *PositionEnumeratorDFS) LoadCheckpointsCSV(filename string) (int, error)
 				return count, fmt.Errorf("invalid depth in checkpoint: %w", err)
 			}
 			fen = record[2]
-		} else {
+
+		case 4, 5:
+			// Stack format: index,depth,fen,stack
+			// Legacy format: index,depth,fen,stack,bloom (bloom ignored)
+			index, err = strconv.ParseUint(record[0], 10, 64)
+			if err != nil {
+				return count, fmt.Errorf("invalid index in checkpoint: %w", err)
+			}
+			depth, err = strconv.Atoi(record[1])
+			if err != nil {
+				return count, fmt.Errorf("invalid depth in checkpoint: %w", err)
+			}
+			fen = record[2]
+
+			// Parse stack if present
+			if record[3] != "" {
+				stack, err = uciToStack(record[3])
+				if err != nil {
+					// Non-fatal: just skip the stack
+					stack = nil
+				}
+			}
+
+		default:
 			continue // Skip malformed lines
 		}
 
@@ -710,10 +1214,20 @@ func (e *PositionEnumeratorDFS) LoadCheckpointsCSV(filename string) (int, error)
 			Index: index,
 			Depth: depth,
 			State: *state,
+			Stack: stack,
 		}
 
 		e.checkpoints = append(e.checkpoints, ckpt)
 		count++
+
+		if index > maxIdx {
+			maxIdx = index
+		}
+	}
+
+	// Set currentIdx to allow gap searches to work
+	if maxIdx > 0 {
+		e.currentIdx = maxIdx + CheckpointIntervalDFS
 	}
 
 	return count, nil

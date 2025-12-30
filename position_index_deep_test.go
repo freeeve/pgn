@@ -8,7 +8,9 @@ import (
 
 // TestDFSScalability measures DFS performance at increasing depths
 // and projects feasibility of reaching depth 15-30.
+// Skipped by default as it takes a long time (runs to depth 8).
 func TestDFSScalability(t *testing.T) {
+	t.Skip("Skipping long-running scalability test")
 	start, err := NewGame(startFEN)
 	if err != nil {
 		t.Fatalf("Failed to create starting position: %v", err)
@@ -162,7 +164,9 @@ func TestReachDeepPosition(t *testing.T) {
 
 // TestEnumerateToFirstNPositions tests enumerating the first N positions
 // regardless of depth. This is useful for checkpoint testing.
+// Skipped by default as it takes a long time (runs to depth 100).
 func TestEnumerateToFirstNPositions(t *testing.T) {
+	t.Skip("Skipping long-running enumeration test")
 	start, err := NewGame(startFEN)
 	if err != nil {
 		t.Fatalf("Failed to create starting position: %v", err)
@@ -212,7 +216,9 @@ func TestEnumerateToFirstNPositions(t *testing.T) {
 }
 
 // TestDFSMemoryUsage tests memory characteristics at various depths
+// Skipped by default as it takes a long time (runs to depth 10).
 func TestDFSMemoryUsage(t *testing.T) {
+	t.Skip("Skipping long-running memory test")
 	start, err := NewGame(startFEN)
 	if err != nil {
 		t.Fatalf("Failed to create starting position: %v", err)

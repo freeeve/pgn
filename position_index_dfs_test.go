@@ -258,6 +258,125 @@ func BenchmarkDFSIndexOfPosition(b *testing.B) {
 	}
 }
 
+func BenchmarkDFSPositionAtIndex_Depth6_Checkpoint(b *testing.B) {
+	const checkpointFile = "checkpoints_depth6.csv.zst"
+	if _, err := os.Stat(checkpointFile); os.IsNotExist(err) {
+		b.Skipf("Checkpoint file %s not found", checkpointFile)
+	}
+
+	start, _ := NewGame(startFEN)
+	enum := NewPositionEnumeratorDFS(start)
+
+	count, err := enum.LoadCheckpointsCSV(checkpointFile)
+	if err != nil {
+		b.Fatalf("Failed to load checkpoints: %v", err)
+	}
+	b.Logf("Loaded %d checkpoints", count)
+
+	// Benchmark exact checkpoint lookups (instant - no DFS needed)
+	testIndices := []uint64{
+		0,
+		CheckpointIntervalDFS,
+		CheckpointIntervalDFS * 10,
+		CheckpointIntervalDFS * 50,
+		CheckpointIntervalDFS * 100, // Near end for depth 6 (~119M)
+	}
+
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		for _, idx := range testIndices {
+			enum.PositionAtIndexDFS(idx, 6)
+		}
+	}
+}
+
+func BenchmarkDFSPositionAtIndex_Depth6_NearCheckpoint(b *testing.B) {
+	const checkpointFile = "checkpoints_depth6.csv.zst"
+	if _, err := os.Stat(checkpointFile); os.IsNotExist(err) {
+		b.Skipf("Checkpoint file %s not found", checkpointFile)
+	}
+
+	start, _ := NewGame(startFEN)
+	enum := NewPositionEnumeratorDFS(start)
+
+	count, err := enum.LoadCheckpointsCSV(checkpointFile)
+	if err != nil {
+		b.Fatalf("Failed to load checkpoints: %v", err)
+	}
+	b.Logf("Loaded %d checkpoints", count)
+
+	// Benchmark lookups with small offsets (100-1000 positions from checkpoint)
+	testIndices := []uint64{
+		CheckpointIntervalDFS + 100,
+		CheckpointIntervalDFS + 1000,
+		CheckpointIntervalDFS*50 + 500,
+		CheckpointIntervalDFS*100 + 100, // Near end for depth 6
+	}
+
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		for _, idx := range testIndices {
+			enum.PositionAtIndexDFS(idx, 6)
+		}
+	}
+}
+
+func BenchmarkDFSPositionAtIndex_Depth6_MidCheckpoint(b *testing.B) {
+	const checkpointFile = "checkpoints_depth6.csv.zst"
+	if _, err := os.Stat(checkpointFile); os.IsNotExist(err) {
+		b.Skipf("Checkpoint file %s not found", checkpointFile)
+	}
+
+	start, _ := NewGame(startFEN)
+	enum := NewPositionEnumeratorDFS(start)
+
+	count, err := enum.LoadCheckpointsCSV(checkpointFile)
+	if err != nil {
+		b.Fatalf("Failed to load checkpoints: %v", err)
+	}
+	b.Logf("Loaded %d checkpoints", count)
+
+	// Benchmark worst case: mid-checkpoint lookups (~500K positions from checkpoint)
+	// This requires traversing ~500K positions via DFS
+	testIdx := uint64(CheckpointIntervalDFS) + uint64(CheckpointIntervalDFS/2) // 1.5M
+
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		enum.PositionAtIndexDFS(testIdx, 6)
+	}
+}
+
+func BenchmarkDFSIndexOfPosition_Depth6(b *testing.B) {
+	const checkpointFile = "checkpoints_depth6.csv.zst"
+	if _, err := os.Stat(checkpointFile); os.IsNotExist(err) {
+		b.Skipf("Checkpoint file %s not found", checkpointFile)
+	}
+
+	start, _ := NewGame(startFEN)
+	enum := NewPositionEnumeratorDFS(start)
+
+	count, err := enum.LoadCheckpointsCSV(checkpointFile)
+	if err != nil {
+		b.Fatalf("Failed to load checkpoints: %v", err)
+	}
+	b.Logf("Loaded %d checkpoints", count)
+
+	// Get some sample positions at checkpoint boundaries
+	checkpoints := enum.GetCheckpointsDFS()
+	var positions []*GameState
+	for i := 0; i < len(checkpoints) && i < 10; i++ {
+		posCopy := checkpoints[i].State
+		positions = append(positions, &posCopy)
+	}
+
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		for _, pos := range positions {
+			enum.IndexOfPositionDFS(pos, 7)
+		}
+	}
+}
+
 // Test CSV checkpoint persistence
 
 func TestCheckpointCSVSaveLoad(t *testing.T) {
@@ -461,7 +580,7 @@ func TestPositionLookupWithZstdCheckpoints(t *testing.T) {
 	})
 
 	// Save to zstd file
-	filename := "/tmp/test_lookup.csv.zstd"
+	filename := "/tmp/test_lookup.csv.zst"
 	defer os.Remove(filename)
 
 	err := enum.SaveCheckpointsCSV(filename, 5)
@@ -499,7 +618,7 @@ func TestCheckpointCSVZstdRoundTrip(t *testing.T) {
 	// Enumerate a small tree to create checkpoints
 	enum.EnumerateDFS(3, nil)
 
-	filename := "/tmp/test_checkpoint.csv.zstd"
+	filename := "/tmp/test_checkpoint.csv.zst"
 	defer os.Remove(filename)
 
 	// Save compressed

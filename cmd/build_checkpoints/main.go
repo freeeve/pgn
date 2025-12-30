@@ -1,13 +1,13 @@
 // build_checkpoints is a tool for building position index checkpoint files.
 //
 // Usage:
-//   build_checkpoints -depth 7                     # Output: checkpoints_depth7.csv.zstd
-//   build_checkpoints -depth 8 -cores 8            # Output: checkpoints_depth8.csv.zstd
+//   build_checkpoints -depth 7                     # Output: checkpoints_depth7.csv.zst
+//   build_checkpoints -depth 8 -cores 8            # Output: checkpoints_depth8.csv.zst
 //   build_checkpoints -depth 9 -output custom.csv  # Uncompressed output
 //   build_checkpoints -depth 9 -resume             # Resume from existing file
 //
 // The checkpoint files enable fast bidirectional position<->index mapping
-// for all positions up to the specified depth. Files ending in .zstd are
+// for all positions up to the specified depth. Files ending in .zst are
 // automatically compressed/decompressed.
 package main
 
@@ -47,7 +47,7 @@ var perftSums = map[int]uint64{
 func main() {
 	// Command-line flags
 	depth := flag.Int("depth", 6, "Maximum depth to enumerate (default: 6)")
-	output := flag.String("output", "", "Output file (default: checkpoints_depth{N}.csv.zstd)")
+	output := flag.String("output", "", "Output file (default: checkpoints_depth{N}.csv.zst)")
 	cores := flag.Int("cores", runtime.NumCPU(), "Number of CPU cores to use (default: all)")
 	singleThreaded := flag.Bool("single", false, "Use single-threaded enumeration (for testing)")
 	startFEN := flag.String("fen", "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1", "Starting position FEN")
@@ -58,7 +58,7 @@ func main() {
 
 	// Generate default output filename if not specified
 	if *output == "" {
-		*output = fmt.Sprintf("checkpoints_depth%d.csv.zstd", *depth)
+		*output = fmt.Sprintf("checkpoints_depth%d.csv.zst", *depth)
 	}
 
 	if *depth < 1 || *depth > 12 {
@@ -149,6 +149,8 @@ func main() {
 		// Use exponential moving average for smoother rate
 		var smoothRate float64
 		lastBoardTime := time.Now()
+		boardPrinted := false
+		const boardLines = 12 // title + header + 8 ranks + footer + blank
 
 		for {
 			select {
@@ -200,11 +202,16 @@ func main() {
 				if *boardInterval > 0 && now.Sub(lastBoardTime) >= time.Duration(*boardInterval)*time.Second {
 					currentPosMu.Lock()
 					if currentPos != nil {
-						// Clear current line and print board
-						fmt.Printf("\r\033[K\n")
+						// Move cursor up to overwrite previous board if we printed one
+						if boardPrinted {
+							fmt.Printf("\r\033[K\033[%dA", boardLines)
+						} else {
+							fmt.Printf("\r\033[K\n")
+						}
 						fmt.Printf("Current position (depth %d, index %s):\n", currentPosDepth, formatNumber(current))
 						fmt.Print(currentPos.String())
 						fmt.Printf("\n")
+						boardPrinted = true
 					}
 					currentPosMu.Unlock()
 					lastBoardTime = now

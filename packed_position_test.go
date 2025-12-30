@@ -282,3 +282,57 @@ func BenchmarkParsePackedPosition(b *testing.B) {
 	}
 }
 
+
+func TestPackedFEN_RoundTrip(t *testing.T) {
+	tests := []struct {
+		name string
+		fen  string
+	}{
+		{"starting", "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"},
+		{"after_e4", "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq e3 0 1"},
+		{"midgame", "r1bqk2r/pppp1ppp/2n2n2/2b1p3/2B1P3/5N2/PPPP1PPP/RNBQK2R w KQkq - 4 4"},
+		{"high_moves", "8/8/8/8/8/8/8/4K2k w - - 99 250"},
+		{"very_high_moves", "8/8/8/8/8/8/8/4K2k b - - 0 1000"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			gs, err := NewGame(tt.fen)
+			if err != nil {
+				t.Fatalf("NewGame failed: %v", err)
+			}
+
+			pf := gs.PackFEN()
+			base64Str := pf.String()
+			t.Logf("FEN: %s -> base64: %s (len=%d)", tt.fen, base64Str, len(base64Str))
+
+			// Parse back
+			pf2, err := ParsePackedFEN(base64Str)
+			if err != nil {
+				t.Fatalf("ParsePackedFEN failed: %v", err)
+			}
+
+			// Unpack and compare
+			gs2 := pf2.Unpack()
+			fen2 := gs2.ToFEN()
+
+			if fen2 != tt.fen {
+				t.Errorf("Round trip failed:\n  input:  %s\n  output: %s", tt.fen, fen2)
+			}
+		})
+	}
+}
+
+func TestPackedFEN_ToPackedPosition(t *testing.T) {
+	fen := "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq e3 5 10"
+	gs, _ := NewGame(fen)
+	
+	pf := gs.PackFEN()
+	pp := pf.ToPackedPosition()
+	
+	// PackedPosition should match direct Pack()
+	ppDirect := gs.Pack()
+	if pp != ppDirect {
+		t.Error("ToPackedPosition doesn't match direct Pack()")
+	}
+}

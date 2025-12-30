@@ -344,3 +344,22 @@ func (p *GameState) Copy() *GameState {
 	cp := *p
 	return &cp
 }
+
+// BoardEquals compares board state (ignores halfmove/fullmove counters).
+// Returns true if piece positions, side to move, castling rights, and EP square match.
+func (gs *GameState) BoardEquals(other *GameState) bool {
+	if gs.SideToMove != other.SideToMove || gs.Castle != other.Castle || gs.EP != other.EP {
+		return false
+	}
+	for i := 0; i < v2PieceCount; i++ {
+		if gs.pieces[i] != other.pieces[i] {
+			return false
+		}
+	}
+	return true
+}
+
+// Equals compares positions exactly (including halfmove/fullmove counters).
+func (gs *GameState) Equals(other *GameState) bool {
+	return gs.BoardEquals(other) && gs.Halfmove == other.Halfmove && gs.Fullmove == other.Fullmove
+}

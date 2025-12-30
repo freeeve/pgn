@@ -15,7 +15,12 @@ import (
 )
 
 // PackedPosition is a compact 34-byte representation of a chess position.
+// Does not include halfmove clock or fullmove number - use PackedFEN for full FEN data.
 type PackedPosition [34]byte
+
+// PackedFEN is a compact 37-byte representation containing all FEN fields.
+// Layout: 32 bytes board + 1 byte flags + 1 byte EP + 1 byte halfmove + 2 bytes fullmove
+type PackedFEN [37]byte
 
 const (
 	ppEmpty = 0
@@ -234,5 +239,81 @@ func PackedPositionFromFEN(fen string) (string, error) {
 		return "", err
 	}
 	return pp.String(), nil
+}
+
+// PackFEN encodes a GameState into a PackedFEN (37 bytes with move counts).
+func (gs *GameState) PackFEN() PackedFEN {
+	var pf PackedFEN
+
+	// Copy the 34-byte PackedPosition part
+	pp := gs.Pack()
+	copy(pf[:34], pp[:])
+
+	// Add halfmove clock (1 byte, capped at 255)
+	if gs.Halfmove > 255 {
+		pf[34] = 255
+	} else {
+		pf[34] = byte(gs.Halfmove)
+	}
+
+	// Add fullmove number (2 bytes little-endian, capped at 65535)
+	fullmove := gs.Fullmove
+	if fullmove > 65535 {
+		fullmove = 65535
+	}
+	if fullmove < 1 {
+		fullmove = 1
+	}
+	pf[35] = byte(fullmove & 0xFF)
+	pf[36] = byte((fullmove >> 8) & 0xFF)
+
+	return pf
+}
+
+// Unpack decodes a PackedFEN into a GameState.
+func (pf PackedFEN) Unpack() *GameState {
+	// Unpack the 34-byte PackedPosition part
+	var pp PackedPosition
+	copy(pp[:], pf[:34])
+	gs := pp.Unpack()
+
+	// Add halfmove clock
+	gs.Halfmove = int(pf[34])
+
+	// Add fullmove number (little-endian)
+	gs.Fullmove = int(pf[35]) | (int(pf[36]) << 8)
+
+	return gs
+}
+
+// String returns the base64 URL-safe encoding of the packed FEN.
+func (pf PackedFEN) String() string {
+	return base64.RawURLEncoding.EncodeToString(pf[:])
+}
+
+// ToFEN converts the packed FEN to a FEN string.
+func (pf PackedFEN) ToFEN() string {
+	return pf.Unpack().ToFEN()
+}
+
+// ParsePackedFEN decodes a base64 URL-safe encoded packed FEN.
+func ParsePackedFEN(s string) (PackedFEN, error) {
+	data, err := base64.RawURLEncoding.DecodeString(s)
+	if err != nil {
+		return PackedFEN{}, fmt.Errorf("invalid base64: %w", err)
+	}
+	if len(data) != 37 {
+		return PackedFEN{}, fmt.Errorf("packed FEN must be 37 bytes, got %d", len(data))
+	}
+	var pf PackedFEN
+	copy(pf[:], data)
+	return pf, nil
+}
+
+// ToPackedPosition extracts just the board position (without move counts).
+func (pf PackedFEN) ToPackedPosition() PackedPosition {
+	var pp PackedPosition
+	copy(pp[:], pf[:34])
+	return pp
 }
 
