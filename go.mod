@@ -1,4 +1,4 @@
-module github.com/freeeve/pgn/v2
+module github.com/freeeve/pgn/v3
 
 go 1.24
 
