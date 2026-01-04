@@ -3,7 +3,7 @@ package pgn_test
 import (
 	"testing"
 
-	pgn "github.com/freeeve/pgn/v2"
+	pgn "github.com/freeeve/pgn/v3"
 )
 
 func BenchmarkPerft_Startpos_D6(b *testing.B) {

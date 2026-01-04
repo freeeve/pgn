@@ -4,12 +4,12 @@ A high-performance PGN (Portable Game Notation) parser for Go.
 
 **v2.0** - Complete rewrite with bitboard engine, parallel parsing, and zstd support.
 
-[![Go Reference](https://pkg.go.dev/badge/github.com/freeeve/pgn/v2.svg)](https://pkg.go.dev/github.com/freeeve/pgn/v2)
+[![Go Reference](https://pkg.go.dev/badge/github.com/freeeve/pgn/v3.svg)](https://pkg.go.dev/github.com/freeeve/pgn/v3)
 
 ## Installation
 
 ```bash
-go get github.com/freeeve/pgn/v2
+go get github.com/freeeve/pgn/v3
 ```
 
 ## Quick Start
@@ -21,7 +21,7 @@ import (
     "fmt"
     "log"
 
-    "github.com/freeeve/pgn/v2"
+    "github.com/freeeve/pgn/v3"
 )
 
 func main() {

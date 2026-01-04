@@ -6,7 +6,7 @@ import (
 	"runtime"
 	"time"
 
-	"github.com/freeeve/pgn/v2"
+	"github.com/freeeve/pgn/v3"
 )
 
 func main() {

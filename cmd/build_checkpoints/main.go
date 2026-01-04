@@ -22,7 +22,7 @@ import (
 	"sync/atomic"
 	"time"
 
-	pgn "github.com/freeeve/pgn/v2"
+	pgn "github.com/freeeve/pgn/v3"
 )
 
 const checkpointInterval = 1 << 20 // 1,048,576 positions

@@ -58,6 +58,30 @@ const (
 	noEPFile        = 0xFF
 )
 
+// base64URLChars is the URL-safe base64 alphabet.
+const base64URLChars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_"
+
+// Lookup tables for piece conversions (package-level for better performance)
+var codeToPieceTable = [16]byte{'P', 'N', 'B', 'R', 'Q', 'K', 'p', 'n', 'b', 'r', 'q', 'k', 0, 0, 0, 0}
+var codeToV2IndexTable = [16]int{v2WPawn, v2WKnight, v2WBishop, v2WRook, v2WQueen, v2WKing,
+	v2BPawn, v2BKnight, v2BBishop, v2BRook, v2BQueen, v2BKing, -1, -1, -1, -1}
+
+// appendBase64 appends base64 URL-safe encoding of src to dst.
+// Returns the extended buffer (zero allocation if dst has sufficient capacity).
+func appendBase64(dst, src []byte) []byte {
+	needed := base64.RawURLEncoding.EncodedLen(len(src))
+	if cap(dst)-len(dst) < needed {
+		// Need to grow
+		newDst := make([]byte, len(dst), len(dst)+needed)
+		copy(newDst, dst)
+		dst = newDst
+	}
+	start := len(dst)
+	dst = dst[:start+needed]
+	base64.RawURLEncoding.Encode(dst[start:], src)
+	return dst
+}
+
 // pieceToCode converts a piece character to its packed code.
 func pieceToCode(p byte) byte {
 	switch p {
@@ -92,21 +116,14 @@ func pieceToCode(p byte) byte {
 
 // codeToPiece converts a packed code to piece character.
 func codeToPiece(code byte) byte {
-	pieces := [12]byte{'P', 'N', 'B', 'R', 'Q', 'K', 'p', 'n', 'b', 'r', 'q', 'k'}
-	if code < 12 {
-		return pieces[code]
-	}
-	return 0
+	// Use lookup table with mask to avoid bounds check
+	return codeToPieceTable[code&0x0F]
 }
 
 // codeToV2Index converts a packed code to v2 piece index.
 func codeToV2Index(code byte) int {
-	indices := [12]int{v2WPawn, v2WKnight, v2WBishop, v2WRook, v2WQueen, v2WKing,
-		v2BPawn, v2BKnight, v2BBishop, v2BRook, v2BQueen, v2BKing}
-	if code < 12 {
-		return indices[code]
-	}
-	return -1
+	// Use lookup table with mask to avoid bounds check
+	return codeToV2IndexTable[code&0x0F]
 }
 
 // -----------------------------------------------------------------------------
@@ -138,10 +155,15 @@ func (gs *GameState) Pack() PackedPosition {
 		}
 	}
 
-	// Store occupancy (little-endian)
-	for i := 0; i < 8; i++ {
-		pp[i] = byte(occupancy >> (i * 8))
-	}
+	// Store occupancy (little-endian) - unrolled for performance
+	pp[0] = byte(occupancy)
+	pp[1] = byte(occupancy >> 8)
+	pp[2] = byte(occupancy >> 16)
+	pp[3] = byte(occupancy >> 24)
+	pp[4] = byte(occupancy >> 32)
+	pp[5] = byte(occupancy >> 40)
+	pp[6] = byte(occupancy >> 48)
+	pp[7] = byte(occupancy >> 56)
 
 	// Store flags (byte 24)
 	var flags byte
@@ -174,13 +196,20 @@ func (gs *GameState) Pack() PackedPosition {
 
 // Unpack decodes a PackedPosition into a GameState.
 func (pp PackedPosition) Unpack() *GameState {
-	gs := &GameState{EP: -1, Fullmove: 1}
+	gs := &GameState{}
+	pp.UnpackInto(gs)
+	return gs
+}
 
-	// Read occupancy (little-endian)
-	var occupancy uint64
-	for i := 0; i < 8; i++ {
-		occupancy |= uint64(pp[i]) << (i * 8)
-	}
+// UnpackInto decodes a PackedPosition into an existing GameState (zero allocation).
+// The GameState is fully reset before unpacking.
+func (pp PackedPosition) UnpackInto(gs *GameState) {
+	// Reset the GameState
+	*gs = GameState{EP: -1, Fullmove: 1}
+
+	// Read occupancy (little-endian) - unrolled for performance
+	occupancy := uint64(pp[0]) | uint64(pp[1])<<8 | uint64(pp[2])<<16 | uint64(pp[3])<<24 |
+		uint64(pp[4])<<32 | uint64(pp[5])<<40 | uint64(pp[6])<<48 | uint64(pp[7])<<56
 
 	// Read pieces in occupancy order
 	pieceIdx := 0
@@ -235,13 +264,17 @@ func (pp PackedPosition) Unpack() *GameState {
 			gs.EP = Square(16 + int(epFile)) // rank 3
 		}
 	}
-
-	return gs
 }
 
 // String returns the base64 URL-safe encoding of the packed position.
 func (pp PackedPosition) String() string {
 	return base64.RawURLEncoding.EncodeToString(pp[:])
+}
+
+// AppendString appends the base64 URL-safe encoding to dst and returns the extended buffer.
+// This is the zero-allocation version of String() when dst has sufficient capacity.
+func (pp PackedPosition) AppendString(dst []byte) []byte {
+	return appendBase64(dst, pp[:])
 }
 
 // ToFEN converts the packed position to a FEN string (with default metadata).
@@ -263,13 +296,25 @@ func ParsePackedPosition(s string) (PackedPosition, error) {
 	return pp, nil
 }
 
+// ParsePackedPositionBytes decodes a base64 URL-safe encoded packed position from bytes.
+// This can avoid allocation when the input is already a byte slice.
+func ParsePackedPositionBytes(src []byte) (PackedPosition, error) {
+	var pp PackedPosition
+	n, err := base64.RawURLEncoding.Decode(pp[:], src)
+	if err != nil {
+		return PackedPosition{}, fmt.Errorf("invalid base64: %w", err)
+	}
+	if n != 26 {
+		return PackedPosition{}, fmt.Errorf("packed position must be 26 bytes, got %d", n)
+	}
+	return pp, nil
+}
+
 // Occupancy returns the 64-bit bitmap of occupied squares.
 func (pp PackedPosition) Occupancy() uint64 {
-	var occ uint64
-	for i := 0; i < 8; i++ {
-		occ |= uint64(pp[i]) << (i * 8)
-	}
-	return occ
+	// Unrolled for performance
+	return uint64(pp[0]) | uint64(pp[1])<<8 | uint64(pp[2])<<16 | uint64(pp[3])<<24 |
+		uint64(pp[4])<<32 | uint64(pp[5])<<40 | uint64(pp[6])<<48 | uint64(pp[7])<<56
 }
 
 // PieceCount returns the number of pieces on the board.
@@ -456,23 +501,35 @@ func PackFEN(fen string) (PackedFEN, error) {
 
 // Unpack decodes a PackedFEN into a GameState.
 func (pf PackedFEN) Unpack() *GameState {
+	gs := &GameState{}
+	pf.UnpackInto(gs)
+	return gs
+}
+
+// UnpackInto decodes a PackedFEN into an existing GameState (zero allocation).
+// The GameState is fully reset before unpacking.
+func (pf PackedFEN) UnpackInto(gs *GameState) {
 	// Unpack PackedPosition (includes board, flags, EP)
 	var pp PackedPosition
 	copy(pp[:], pf[:26])
-	gs := pp.Unpack()
+	pp.UnpackInto(gs)
 
 	// Unpack halfmove clock
 	gs.Halfmove = int(pf[26])
 
 	// Unpack fullmove number (little-endian)
 	gs.Fullmove = int(pf[27]) | (int(pf[28]) << 8)
-
-	return gs
 }
 
 // String returns the base64 URL-safe encoding of the packed FEN.
 func (pf PackedFEN) String() string {
 	return base64.RawURLEncoding.EncodeToString(pf[:])
+}
+
+// AppendString appends the base64 URL-safe encoding to dst and returns the extended buffer.
+// This is the zero-allocation version of String() when dst has sufficient capacity.
+func (pf PackedFEN) AppendString(dst []byte) []byte {
+	return appendBase64(dst, pf[:])
 }
 
 // ToFEN converts the packed FEN to a FEN string.
@@ -494,6 +551,20 @@ func ParsePackedFEN(s string) (PackedFEN, error) {
 	return pf, nil
 }
 
+// ParsePackedFENBytes decodes a base64 URL-safe encoded packed FEN from bytes.
+// This can avoid allocation when the input is already a byte slice.
+func ParsePackedFENBytes(src []byte) (PackedFEN, error) {
+	var pf PackedFEN
+	n, err := base64.RawURLEncoding.Decode(pf[:], src)
+	if err != nil {
+		return PackedFEN{}, fmt.Errorf("invalid base64: %w", err)
+	}
+	if n != 29 {
+		return PackedFEN{}, fmt.Errorf("packed FEN must be 29 bytes, got %d", n)
+	}
+	return pf, nil
+}
+
 // ToPackedPosition extracts the position (without move counters).
 func (pf PackedFEN) ToPackedPosition() PackedPosition {
 	var pp PackedPosition
@@ -507,17 +578,39 @@ func (pf PackedFEN) ToPackedPosition() PackedPosition {
 
 // Occupancy returns the 64-bit bitmap of occupied squares.
 func (pf PackedFEN) Occupancy() uint64 {
-	return pf.ToPackedPosition().Occupancy()
+	// Unrolled for performance - same as PackedPosition but avoids copy
+	return uint64(pf[0]) | uint64(pf[1])<<8 | uint64(pf[2])<<16 | uint64(pf[3])<<24 |
+		uint64(pf[4])<<32 | uint64(pf[5])<<40 | uint64(pf[6])<<48 | uint64(pf[7])<<56
 }
 
 // PieceCount returns the number of pieces on the board.
 func (pf PackedFEN) PieceCount() int {
-	return pf.ToPackedPosition().PieceCount()
+	return bits.OnesCount64(pf.Occupancy())
 }
 
 // PieceAt returns the piece at the given square, or 0 if empty.
 func (pf PackedFEN) PieceAt(sq Square) byte {
-	return pf.ToPackedPosition().PieceAt(sq)
+	occ := pf.Occupancy()
+	bit := uint64(1) << sq
+
+	if occ&bit == 0 {
+		return 0 // empty square
+	}
+
+	// Count pieces before this square to find index
+	mask := bit - 1 // all bits below sq
+	idx := bits.OnesCount64(occ & mask)
+
+	// Read piece code
+	byteIdx := 8 + idx/2
+	var code byte
+	if idx%2 == 0 {
+		code = pf[byteIdx] & 0x0F
+	} else {
+		code = (pf[byteIdx] >> 4) & 0x0F
+	}
+
+	return codeToPiece(code)
 }
 
 // SideToMove returns the side to move (White or Black).

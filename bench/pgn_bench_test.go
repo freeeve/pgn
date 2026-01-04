@@ -6,7 +6,7 @@ import (
 	"runtime"
 	"testing"
 
-	pgn "github.com/freeeve/pgn/v2"
+	pgn "github.com/freeeve/pgn/v3"
 )
 
 // BenchmarkParsePGN benchmarks the parallel PGN parser (default workers).

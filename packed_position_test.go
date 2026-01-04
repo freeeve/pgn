@@ -250,6 +250,77 @@ func TestPackedPosition_Metadata(t *testing.T) {
 	}
 }
 
+func TestPackedPosition_UnpackInto(t *testing.T) {
+	tests := []string{
+		startingFEN,
+		"rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq e3 0 1",
+		"r3k2r/pppppppp/8/8/8/8/PPPPPPPP/R3K2R w KQkq - 0 1",
+		"8/8/8/8/8/8/8/4K2k w - - 0 1",
+	}
+
+	for _, fen := range tests {
+		t.Run(fen, func(t *testing.T) {
+			gs, _ := NewGame(fen)
+			pp := gs.Pack()
+
+			// Test UnpackInto
+			var target GameState
+			pp.UnpackInto(&target)
+
+			// Compare with regular Unpack
+			decoded := pp.Unpack()
+			if !target.BoardEquals(decoded) {
+				t.Error("UnpackInto board doesn't match Unpack")
+			}
+			if target.SideToMove != decoded.SideToMove {
+				t.Errorf("SideToMove: UnpackInto=%v, Unpack=%v", target.SideToMove, decoded.SideToMove)
+			}
+			if target.Castle != decoded.Castle {
+				t.Errorf("Castle: UnpackInto=%d, Unpack=%d", target.Castle, decoded.Castle)
+			}
+			if target.EP != decoded.EP {
+				t.Errorf("EP: UnpackInto=%d, Unpack=%d", target.EP, decoded.EP)
+			}
+		})
+	}
+}
+
+func TestPackedPosition_AppendString(t *testing.T) {
+	gs := NewStartingPosition()
+	pp := gs.Pack()
+
+	// Test AppendString produces same result as String
+	expected := pp.String()
+	buf := make([]byte, 0, 64)
+	buf = pp.AppendString(buf)
+
+	if string(buf) != expected {
+		t.Errorf("AppendString: got %q, want %q", string(buf), expected)
+	}
+
+	// Test appending to existing content
+	buf2 := []byte("prefix:")
+	buf2 = pp.AppendString(buf2)
+	if string(buf2) != "prefix:"+expected {
+		t.Errorf("AppendString with prefix: got %q, want %q", string(buf2), "prefix:"+expected)
+	}
+}
+
+func TestParsePackedPositionBytes(t *testing.T) {
+	gs := NewStartingPosition()
+	pp := gs.Pack()
+	s := []byte(pp.String())
+
+	decoded, err := ParsePackedPositionBytes(s)
+	if err != nil {
+		t.Fatalf("ParsePackedPositionBytes: %v", err)
+	}
+
+	if pp != decoded {
+		t.Error("ParsePackedPositionBytes doesn't match original")
+	}
+}
+
 func TestPackedPosition_Setters(t *testing.T) {
 	gs := NewStartingPosition()
 	pp := gs.Pack()
@@ -321,6 +392,45 @@ func BenchmarkPackedPosition_PieceAt(b *testing.B) {
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		_ = pp.PieceAt(Square(i % 64))
+	}
+}
+
+func BenchmarkPackedPosition_UnpackInto(b *testing.B) {
+	gs := NewStartingPosition()
+	pp := gs.Pack()
+	var target GameState
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		pp.UnpackInto(&target)
+	}
+}
+
+func BenchmarkPackedPosition_AppendString(b *testing.B) {
+	gs := NewStartingPosition()
+	pp := gs.Pack()
+	buf := make([]byte, 0, 64)
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		buf = pp.AppendString(buf[:0])
+	}
+}
+
+func BenchmarkParsePackedPositionBytes(b *testing.B) {
+	gs := NewStartingPosition()
+	pp := gs.Pack()
+	s := []byte(pp.String())
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		_, _ = ParsePackedPositionBytes(s)
+	}
+}
+
+func BenchmarkPackedPosition_Occupancy(b *testing.B) {
+	gs := NewStartingPosition()
+	pp := gs.Pack()
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		_ = pp.Occupancy()
 	}
 }
 
@@ -404,6 +514,65 @@ func TestPackedFEN_Getters(t *testing.T) {
 	}
 	if pf.Fullmove() != 10 {
 		t.Errorf("Fullmove: got %d, want 10", pf.Fullmove())
+	}
+}
+
+func TestPackedFEN_UnpackInto(t *testing.T) {
+	tests := []string{
+		"rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
+		"rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq e3 5 10",
+		"8/8/8/8/8/8/8/4K2k w - - 99 250",
+	}
+
+	for _, fen := range tests {
+		t.Run(fen, func(t *testing.T) {
+			gs, _ := NewGame(fen)
+			pf := gs.PackFEN()
+
+			// Test UnpackInto
+			var target GameState
+			pf.UnpackInto(&target)
+
+			// Compare with regular Unpack
+			decoded := pf.Unpack()
+			if !target.BoardEquals(decoded) {
+				t.Error("UnpackInto board doesn't match Unpack")
+			}
+			if target.Halfmove != decoded.Halfmove {
+				t.Errorf("Halfmove: UnpackInto=%d, Unpack=%d", target.Halfmove, decoded.Halfmove)
+			}
+			if target.Fullmove != decoded.Fullmove {
+				t.Errorf("Fullmove: UnpackInto=%d, Unpack=%d", target.Fullmove, decoded.Fullmove)
+			}
+		})
+	}
+}
+
+func TestPackedFEN_AppendString(t *testing.T) {
+	gs := NewStartingPosition()
+	pf := gs.PackFEN()
+
+	expected := pf.String()
+	buf := make([]byte, 0, 64)
+	buf = pf.AppendString(buf)
+
+	if string(buf) != expected {
+		t.Errorf("AppendString: got %q, want %q", string(buf), expected)
+	}
+}
+
+func TestParsePackedFENBytes(t *testing.T) {
+	gs := NewStartingPosition()
+	pf := gs.PackFEN()
+	s := []byte(pf.String())
+
+	decoded, err := ParsePackedFENBytes(s)
+	if err != nil {
+		t.Fatalf("ParsePackedFENBytes: %v", err)
+	}
+
+	if pf != decoded {
+		t.Error("ParsePackedFENBytes doesn't match original")
 	}
 }
 
@@ -606,5 +775,35 @@ func BenchmarkParsePackedFEN(b *testing.B) {
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		_, _ = ParsePackedFEN(s)
+	}
+}
+
+func BenchmarkPackedFEN_UnpackInto(b *testing.B) {
+	gs := NewStartingPosition()
+	pf := gs.PackFEN()
+	var target GameState
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		pf.UnpackInto(&target)
+	}
+}
+
+func BenchmarkPackedFEN_AppendString(b *testing.B) {
+	gs := NewStartingPosition()
+	pf := gs.PackFEN()
+	buf := make([]byte, 0, 64)
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		buf = pf.AppendString(buf[:0])
+	}
+}
+
+func BenchmarkParsePackedFENBytes(b *testing.B) {
+	gs := NewStartingPosition()
+	pf := gs.PackFEN()
+	s := []byte(pf.String())
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		_, _ = ParsePackedFENBytes(s)
 	}
 }
