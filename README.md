@@ -44,7 +44,7 @@ func main() {
 
 ## Features
 
-- **Fast parallel parsing** - 240+ MB/s, 315K games/sec on Apple M3 Max
+- **Fast parallel parsing** - 475+ MB/s, 620K games/sec on Apple M3 Max
 - **Streaming** - Parse files of any size with constant memory
 - **Zstd support** - Automatic compression/decompression of `.zst` files
 - **Bitboard engine** - Efficient move generation and validation
@@ -210,17 +210,17 @@ $ go test -bench=BenchmarkParsePGN -benchmem -count=3 -benchtime=5s
 
 goos: darwin
 goarch: arm64
-pkg: github.com/freeeve/pgn/bench
+pkg: github.com/freeeve/pgn/v3/bench
 cpu: Apple M3 Max
-BenchmarkParsePGN-16    18    380901891 ns/op    243.7 MB/sec    318539 games/sec
-BenchmarkParsePGN-16    15    396615986 ns/op    234.0 MB/sec    305918 games/sec
-BenchmarkParsePGN-16    18    383425106 ns/op    242.1 MB/sec    316443 games/sec
+BenchmarkParsePGN-16    46    190885760 ns/op    486.2 MB/sec    635626 games/sec
+BenchmarkParsePGN-16    28    192204878 ns/op    482.9 MB/sec    631264 games/sec
+BenchmarkParsePGN-16    30    204266194 ns/op    454.4 MB/sec    593990 games/sec
 ```
 
 | Metric | Result |
 |--------|--------|
-| Throughput | ~240 MB/s |
-| Games/sec | ~315K games/sec |
+| Throughput | ~475 MB/s |
+| Games/sec | ~620K games/sec |
 | Parallelism | 16 workers (auto-detected) |
 
 ### Perft (Move Generation)
@@ -228,14 +228,14 @@ BenchmarkParsePGN-16    18    383425106 ns/op    242.1 MB/sec    316443 games/se
 ```
 $ go test -bench='BenchmarkPerft_Startpos_D6' -benchtime=5s -count=3
 
-BenchmarkPerft_Startpos_D6-16    5    1104828250 ns/op    107763677 nodes/sec
-BenchmarkPerft_Startpos_D6-16    5    1020441675 ns/op    116675315 nodes/sec
-BenchmarkPerft_Startpos_D6-16    5    1082567617 ns/op    109979604 nodes/sec
+BenchmarkPerft_Startpos_D6-16    7    815897476 ns/op    145925631 nodes/sec
+BenchmarkPerft_Startpos_D6-16    7    794158440 ns/op    149920157 nodes/sec
+BenchmarkPerft_Startpos_D6-16    7    763260548 ns/op    155989135 nodes/sec
 ```
 
 | Depth | Nodes | Throughput |
 |-------|-------|------------|
-| 6 | 119,060,324 | **~110M nodes/sec** |
+| 6 | 119,060,324 | **~150M nodes/sec** |
 
 ### Move Parsing & Application
 
@@ -244,15 +244,15 @@ BenchmarkPerft_Startpos_D6-16    5    1082567617 ns/op    109979604 nodes/sec
 ```
 $ go test -bench=BenchmarkMakeMovesRuyLopez -benchmem -count=3
 
-BenchmarkMakeMovesRuyLopez-16    492103    2253 ns/op    0 B/op    0 allocs/op
-BenchmarkMakeMovesRuyLopez-16    528484    2179 ns/op    0 B/op    0 allocs/op
-BenchmarkMakeMovesRuyLopez-16    534524    2354 ns/op    0 B/op    0 allocs/op
+BenchmarkMakeMovesRuyLopez-16    1241637    951.5 ns/op    0 B/op    0 allocs/op
+BenchmarkMakeMovesRuyLopez-16    1261483    988.5 ns/op    0 B/op    0 allocs/op
+BenchmarkMakeMovesRuyLopez-16    1205192    987.6 ns/op    0 B/op    0 allocs/op
 ```
 
 | Metric | Result |
 |--------|--------|
-| 20 moves (parse + apply) | ~2.2 µs |
-| Per move | **~110 ns** |
+| 20 moves (parse + apply) | ~0.98 µs |
+| Per move | **~49 ns** |
 | Allocations | 0 |
 
 ## Migration from v1

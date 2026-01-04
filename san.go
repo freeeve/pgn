@@ -81,16 +81,22 @@ func ParseSANBytes(gs *GameState, san []byte) (Mv, error) {
 		i++
 	}
 
-	from, err := findAttacker(gs, toSq, pieceType, disambFile, disambRank)
+	// For pawn moves, calculate flags needed for legality check
+	// (en passant flag affects how MakeMove captures)
+	var pawnFlags uint16
+	if pieceType == 'P' && gs.EP == toSq {
+		pawnFlags = 2
+	}
+
+	from, err := findAttacker(gs, toSq, pieceType, disambFile, disambRank, pawnFlags)
 	if err != nil {
 		return Mv{}, err
 	}
 
-	var flags uint16
-	if pieceType == 'P' {
-		if gs.EP == toSq {
-			flags = 2
-		}
+	// Calculate full flags for the returned move
+	var flags uint16 = pawnFlags
+	if pieceType == 'P' && pawnFlags == 0 {
+		// Check for double pawn push
 		fromRank := int(from / 8)
 		if gs.SideToMove == White && fromRank == 1 && toRank == 3 {
 			flags = 1
@@ -100,7 +106,6 @@ func ParseSANBytes(gs *GameState, san []byte) (Mv, error) {
 	}
 
 	mv := Mv{From: from, To: toSq, Promo: promo, Flags: flags}
-
 	if !isLegalMove(gs, mv) {
 		return Mv{}, errIllegalMove
 	}
@@ -168,7 +173,8 @@ func parseCastleQueenside(gs *GameState) (Mv, error) {
 }
 
 // findAttacker finds the piece that can move to toSq using magic bitboards.
-func findAttacker(gs *GameState, toSq Square, pieceType byte, disambFile, disambRank int) (Square, error) {
+// For pawns, pawnFlags should be set appropriately (2 for en passant, 1 for double push).
+func findAttacker(gs *GameState, toSq Square, pieceType byte, disambFile, disambRank int, pawnFlags uint16) (Square, error) {
 	toMask := Bitboard(1) << uint(toSq)
 	us := gs.SideToMove
 
@@ -224,13 +230,14 @@ func findAttacker(gs *GameState, toSq Square, pieceType byte, disambFile, disamb
 
 	count := bits.OnesCount64(uint64(attackers))
 	if count > 1 {
+		// Multiple potential attackers - need to disambiguate via legality check
 		var legalFrom Square = -1
 		legalCount := 0
 		for attackers != 0 {
 			from := Square(bits.TrailingZeros64(uint64(attackers)))
 			attackers &^= Bitboard(1) << uint(from)
 
-			mv := Mv{From: from, To: toSq, Promo: NoPromo}
+			mv := Mv{From: from, To: toSq, Promo: NoPromo, Flags: pawnFlags}
 			if isLegalMoveQuick(gs, mv) {
 				legalFrom = from
 				legalCount++
@@ -245,6 +252,7 @@ func findAttacker(gs *GameState, toSq Square, pieceType byte, disambFile, disamb
 		return legalFrom, nil
 	}
 
+	// Single attacker - return it (legality will be checked by caller)
 	return Square(bits.TrailingZeros64(uint64(attackers))), nil
 }
 

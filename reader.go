@@ -17,6 +17,9 @@ import (
 	"github.com/klauspost/compress/zstd"
 )
 
+// ErrBufferFull is used internally to detect when ReadSlice fails
+var errBufferFull = bufio.ErrBufferFull
+
 // openFile opens a PGN file, automatically detecting and handling .zst compression.
 // The returned closer must be called when done.
 func openFile(path string) (io.Reader, io.Closer, error) {
@@ -56,14 +59,15 @@ func wrapZstd(r io.Reader) (io.Reader, error) {
 // streamingScanner provides memory-efficient PGN parsing for large files.
 // It reads incrementally and doesn't buffer the entire file.
 type streamingScanner struct {
-	reader   *bufio.Reader
-	game     Game
-	gs       *GameState
-	startPos *GameState
-	tagMap   map[string]string
-	lineBuf  []byte
-	err      error
-	done     bool
+	reader      *bufio.Reader
+	game        Game
+	gs          *GameState
+	startPos    *GameState
+	tagMap      map[string]string
+	lineBuf     []byte
+	longLineBuf []byte // fallback buffer for lines > 64KB
+	err         error
+	done        bool
 }
 
 func newStreamingScanner(r io.Reader) *streamingScanner {
@@ -290,7 +294,16 @@ func (s *streamingScanner) processMoveText(text []byte) {
 }
 
 func (s *streamingScanner) readLine() ([]byte, error) {
-	line, err := s.reader.ReadBytes('\n')
+	line, err := s.reader.ReadSlice('\n')
+	if err == errBufferFull {
+		// Line too long for buffer, accumulate in longLineBuf
+		s.longLineBuf = append(s.longLineBuf[:0], line...)
+		for err == errBufferFull {
+			line, err = s.reader.ReadSlice('\n')
+			s.longLineBuf = append(s.longLineBuf, line...)
+		}
+		line = s.longLineBuf
+	}
 	if err != nil && len(line) == 0 {
 		return nil, err
 	}
@@ -492,6 +505,7 @@ func streamToChannel(r io.Reader, workers int, out chan<- *Game, cancel <-chan s
 	const chunkSize = 4 * 1024 * 1024
 	br := bufio.NewReaderSize(r, 256*1024)
 	var currentChunk []byte
+	var longLine []byte // buffer for lines > 256KB
 	chunkIndex := 0
 	inTags := false
 
@@ -503,7 +517,16 @@ readLoop:
 		default:
 		}
 
-		line, err := br.ReadBytes('\n')
+		line, err := br.ReadSlice('\n')
+		if err == errBufferFull {
+			// Long line - accumulate in buffer
+			longLine = append(longLine[:0], line...)
+			for err == errBufferFull {
+				line, err = br.ReadSlice('\n')
+				longLine = append(longLine, line...)
+			}
+			line = longLine
+		}
 		if len(line) > 0 {
 			trimmed := trimSpace(line)
 

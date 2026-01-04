@@ -40,6 +40,9 @@ func internTagName(buf []byte) string {
 		if buf[0] == 'D' && buf[1] == 'a' && buf[2] == 't' && buf[3] == 'e' {
 			return "Date"
 		}
+		if buf[0] == 'L' && buf[1] == 'i' && buf[2] == 'n' && buf[3] == 'k' {
+			return "Link"
+		}
 	case 5:
 		if buf[0] == 'E' && buf[1] == 'v' && buf[2] == 'e' && buf[3] == 'n' && buf[4] == 't' {
 			return "Event"
@@ -76,25 +79,77 @@ func internTagName(buf []byte) string {
 			return "Variant"
 		}
 	case 8:
-		if buf[0] == 'W' && buf[1] == 'h' && buf[2] == 'i' && buf[3] == 't' && buf[4] == 'e' && buf[5] == 'E' && buf[6] == 'l' && buf[7] == 'o' {
-			return "WhiteElo"
+		if buf[0] == 'W' && buf[1] == 'h' && buf[2] == 'i' && buf[3] == 't' && buf[4] == 'e' {
+			if buf[5] == 'E' && buf[6] == 'l' && buf[7] == 'o' {
+				return "WhiteElo"
+			}
 		}
-		if buf[0] == 'B' && buf[1] == 'l' && buf[2] == 'a' && buf[3] == 'c' && buf[4] == 'k' && buf[5] == 'E' && buf[6] == 'l' && buf[7] == 'o' {
-			return "BlackElo"
+		if buf[0] == 'B' && buf[1] == 'l' && buf[2] == 'a' && buf[3] == 'c' && buf[4] == 'k' {
+			if buf[5] == 'E' && buf[6] == 'l' && buf[7] == 'o' {
+				return "BlackElo"
+			}
 		}
 		if buf[0] == 'P' && buf[1] == 'l' && buf[2] == 'y' && buf[3] == 'C' && buf[4] == 'o' && buf[5] == 'u' && buf[6] == 'n' && buf[7] == 't' {
 			return "PlyCount"
+		}
+		if buf[0] == 'E' && buf[1] == 'v' && buf[2] == 'e' && buf[3] == 'n' && buf[4] == 't' {
+			if buf[5] == 'U' && buf[6] == 'R' && buf[7] == 'L' {
+				return "EventURL"
+			}
+		}
+		if buf[0] == 'G' && buf[1] == 'a' && buf[2] == 'm' && buf[3] == 'e' {
+			if buf[4] == 'T' && buf[5] == 'y' && buf[6] == 'p' && buf[7] == 'e' {
+				return "GameType"
+			}
 		}
 	case 9:
 		if buf[0] == 'A' && buf[1] == 'n' && buf[2] == 'n' && buf[3] == 'o' && buf[4] == 't' && buf[5] == 'a' && buf[6] == 't' && buf[7] == 'o' && buf[8] == 'r' {
 			return "Annotator"
 		}
-	case 11:
-		if string(buf) == "TimeControl" {
-			return "TimeControl"
+		if buf[0] == 'E' && buf[1] == 'v' && buf[2] == 'e' && buf[3] == 'n' && buf[4] == 't' {
+			if buf[5] == 'D' && buf[6] == 'a' && buf[7] == 't' && buf[8] == 'e' {
+				return "EventDate"
+			}
+			if buf[5] == 'T' && buf[6] == 'y' && buf[7] == 'p' && buf[8] == 'e' {
+				return "EventType"
+			}
 		}
-		if string(buf) == "Termination" {
-			return "Termination"
+	case 10:
+		if buf[0] == 'W' && buf[1] == 'h' && buf[2] == 'i' && buf[3] == 't' && buf[4] == 'e' {
+			if buf[5] == 'T' && buf[6] == 'i' && buf[7] == 't' && buf[8] == 'l' && buf[9] == 'e' {
+				return "WhiteTitle"
+			}
+		}
+		if buf[0] == 'B' && buf[1] == 'l' && buf[2] == 'a' && buf[3] == 'c' && buf[4] == 'k' {
+			if buf[5] == 'T' && buf[6] == 'i' && buf[7] == 't' && buf[8] == 'l' && buf[9] == 'e' {
+				return "BlackTitle"
+			}
+		}
+	case 11:
+		if buf[0] == 'T' && buf[1] == 'i' && buf[2] == 'm' && buf[3] == 'e' {
+			if buf[4] == 'C' && buf[5] == 'o' && buf[6] == 'n' && buf[7] == 't' && buf[8] == 'r' && buf[9] == 'o' && buf[10] == 'l' {
+				return "TimeControl"
+			}
+		}
+		if buf[0] == 'T' && buf[1] == 'e' && buf[2] == 'r' && buf[3] == 'm' && buf[4] == 'i' {
+			if buf[5] == 'n' && buf[6] == 'a' && buf[7] == 't' && buf[8] == 'i' && buf[9] == 'o' && buf[10] == 'n' {
+				return "Termination"
+			}
+		}
+	case 15:
+		if buf[0] == 'W' && buf[1] == 'h' && buf[2] == 'i' && buf[3] == 't' && buf[4] == 'e' {
+			if buf[5] == 'R' && buf[6] == 'a' && buf[7] == 't' && buf[8] == 'i' && buf[9] == 'n' && buf[10] == 'g' {
+				if buf[11] == 'D' && buf[12] == 'i' && buf[13] == 'f' && buf[14] == 'f' {
+					return "WhiteRatingDiff"
+				}
+			}
+		}
+		if buf[0] == 'B' && buf[1] == 'l' && buf[2] == 'a' && buf[3] == 'c' && buf[4] == 'k' {
+			if buf[5] == 'R' && buf[6] == 'a' && buf[7] == 't' && buf[8] == 'i' && buf[9] == 'n' && buf[10] == 'g' {
+				if buf[11] == 'D' && buf[12] == 'i' && buf[13] == 'f' && buf[14] == 'f' {
+					return "BlackRatingDiff"
+				}
+			}
 		}
 	}
 	return string(buf)
